@@ -1,7 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 
-console.log('SUPABASE_URL:', JSON.stringify(process.env.SUPABASE_URL)) // TODO: remove debug log
-
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY)
 
 export default async function handler(req, res) {
@@ -13,8 +11,7 @@ export default async function handler(req, res) {
       .maybeSingle()
 
     if (selectError) {
-      // TODO: remove verbose error details before shipping to production
-      res.status(500).json({ error: 'Failed to query Supabase', message: selectError.message, details: selectError })
+      res.status(500).json({ error: 'Failed to query Supabase' })
       return
     }
 
@@ -54,14 +51,12 @@ export default async function handler(req, res) {
       .upsert({ name: team.name, squad: players }, { onConflict: 'name' })
 
     if (upsertError) {
-      // TODO: remove verbose error details before shipping to production
-      res.status(500).json({ error: 'Failed to save to Supabase', message: upsertError.message, details: upsertError })
+      res.status(500).json({ error: 'Failed to save to Supabase' })
       return
     }
 
     res.status(200).json({ team: team.name, players })
   } catch (error) {
-    // TODO: remove verbose error details before shipping to production
-    res.status(500).json({ error: 'Internal server error', message: error.message, stack: error.stack })
+    res.status(500).json({ error: 'Internal server error' })
   }
 }
