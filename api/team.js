@@ -49,13 +49,13 @@ export default async function handler(req, res) {
         element_type,
       }))
 
-    const { error: insertError } = await supabase
+    const { error: upsertError } = await supabase
       .from('clubs')
-      .insert({ name: team.name, squad: players })
+      .upsert({ name: team.name, squad: players }, { onConflict: 'name' })
 
-    if (insertError) {
+    if (upsertError) {
       // TODO: remove verbose error details before shipping to production
-      res.status(500).json({ error: 'Failed to save to Supabase', message: insertError.message, details: insertError })
+      res.status(500).json({ error: 'Failed to save to Supabase', message: upsertError.message, details: upsertError })
       return
     }
 
