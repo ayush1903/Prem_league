@@ -11,7 +11,8 @@ export default async function handler(req, res) {
       .maybeSingle()
 
     if (selectError) {
-      res.status(500).json({ error: 'Failed to query Supabase' })
+      // TODO: remove verbose error details before shipping to production
+      res.status(500).json({ error: 'Failed to query Supabase', message: selectError.message, details: selectError })
       return
     }
 
@@ -51,12 +52,14 @@ export default async function handler(req, res) {
       .insert({ name: team.name, squad: players })
 
     if (insertError) {
-      res.status(500).json({ error: 'Failed to save to Supabase' })
+      // TODO: remove verbose error details before shipping to production
+      res.status(500).json({ error: 'Failed to save to Supabase', message: insertError.message, details: insertError })
       return
     }
 
     res.status(200).json({ team: team.name, players })
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' })
+    // TODO: remove verbose error details before shipping to production
+    res.status(500).json({ error: 'Internal server error', message: error.message, stack: error.stack })
   }
 }
