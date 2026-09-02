@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
+console.log('SUPABASE_URL:', JSON.stringify(process.env.SUPABASE_URL)) // TODO: remove debug log
+
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY)
 
 export default async function handler(req, res) {
