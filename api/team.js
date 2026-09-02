@@ -1,5 +1,25 @@
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY)
+
 export default async function handler(req, res) {
   try {
+    const { data: existing, error: selectError } = await supabase
+      .from('clubs')
+      .select('name, squad')
+      .ilike('name', 'arsenal')
+      .maybeSingle()
+
+    if (selectError) {
+      res.status(500).json({ error: 'Failed to query Supabase' })
+      return
+    }
+
+    if (existing) {
+      res.status(200).json({ team: existing.name, players: existing.squad })
+      return
+    }
+
     const response = await fetch('https://fantasy.premierleague.com/api/bootstrap-static/')
 
     if (!response.ok) {
@@ -25,6 +45,15 @@ export default async function handler(req, res) {
         second_name,
         element_type,
       }))
+
+    const { error: insertError } = await supabase
+      .from('clubs')
+      .insert({ name: team.name, squad: players })
+
+    if (insertError) {
+      res.status(500).json({ error: 'Failed to save to Supabase' })
+      return
+    }
 
     res.status(200).json({ team: team.name, players })
   } catch (error) {
