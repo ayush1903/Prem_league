@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
+import { getBadgeColor } from '../lib/clubColors'
 
 const MotionLink = motion.create(Link)
 
@@ -9,20 +10,6 @@ type Club = {
   id: number
   name: string
   short_name: string
-}
-
-// Deterministic placeholder color for clubs whose real brand color isn't wired up yet.
-function hashHue(input: string): number {
-  let hash = 0
-  for (let i = 0; i < input.length; i++) {
-    hash = input.charCodeAt(i) + ((hash << 5) - hash)
-  }
-  return Math.abs(hash) % 360
-}
-
-function getBadgeColor(shortName: string): string {
-  if (shortName === 'ARS') return '#EF0107'
-  return `hsl(${hashHue(shortName)}, 60%, 38%)`
 }
 
 function Home() {

@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
-
-const ARSENAL_SHORT_NAME = 'ARS'
+import { getBadgeColor } from '../lib/clubColors'
 
 type Player = {
   first_name: string
@@ -36,6 +35,8 @@ type Transfer = {
   status: string
 }
 
+type Status = 'loading' | 'ready' | 'not-found' | 'error'
+
 const POSITION_LABELS: Record<number, string> = {
   1: 'Goalkeeper',
   2: 'Defender',
@@ -52,48 +53,89 @@ const POSITION_GROUPS: { type: number; heading: string }[] = [
 
 const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === '1'
 
-// Hardcoded to Arsenal content for now — only rendered when the slug matches Arsenal.
-function ArsenalClubPage() {
+function ClubNotFoundPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+      <p className="text-gray-600 dark:text-gray-400">
+        Club not found — this doesn't match a current Premier League club.
+      </p>
+    </div>
+  )
+}
+
+function ClubPage() {
+  const { slug } = useParams<{ slug: string }>()
+  const [status, setStatus] = useState<Status>('loading')
   const [team, setTeam] = useState<TeamResponse | null>(null)
   const [clubContent, setClubContent] = useState<ClubContent | null>(null)
   const [transfers, setTransfers] = useState<Transfer[]>([])
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const previewParam = isPreview ? '?preview=1' : ''
+    if (!slug) {
+      setStatus('not-found')
+      return
+    }
 
-    fetch('/api/team')
-      .then((res) => res.json())
-      .then((data) => setTeam(data))
-      .catch(() => setError('Failed to load team data'))
+    setStatus('loading')
+    setTeam(null)
+    setClubContent(null)
+    setTransfers([])
 
-    fetch(`/api/club-content${previewParam}`)
+    const clubParam = `club=${encodeURIComponent(slug)}`
+    const previewParam = isPreview ? '&preview=1' : ''
+
+    fetch(`/api/team?${clubParam}`)
+      .then((res) => {
+        if (res.status === 404) {
+          setStatus('not-found')
+          return null
+        }
+        if (!res.ok) {
+          setStatus('error')
+          return null
+        }
+        return res.json()
+      })
+      .then((data) => {
+        if (data) {
+          setTeam(data)
+          setStatus('ready')
+        }
+      })
+      .catch(() => setStatus('error'))
+
+    fetch(`/api/club-content?${clubParam}${previewParam}`)
       .then((res) => res.json())
       .then((data) => setClubContent(data.clubContent ?? null))
       .catch(() => {})
 
-    fetch(`/api/transfers${previewParam}`)
+    fetch(`/api/transfers?${clubParam}${previewParam}`)
       .then((res) => res.json())
       .then((data) => setTransfers(data.transfers ?? []))
       .catch(() => {})
-  }, [])
+  }, [slug])
 
-  if (error) {
+  if (status === 'not-found') {
+    return <ClubNotFoundPage />
+  }
+
+  if (status === 'error') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
-        <p className="text-red-500">{error}</p>
+        <p className="text-red-500">Failed to load team data</p>
       </div>
     )
   }
 
-  if (!team) {
+  if (status === 'loading' || !team) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
-        <p>Loading...</p>
+        <p>Loading squad — first visit for this club can take a moment...</p>
       </div>
     )
   }
 
+  const badgeLabel = (slug ?? '').toUpperCase()
   const players = team.players ?? []
   const playersByType = players.reduce<Record<number, Player[]>>((acc, player) => {
     acc[player.element_type] = acc[player.element_type] ?? []
@@ -122,9 +164,9 @@ function ArsenalClubPage() {
         >
           <div
             className="flex h-14 w-14 items-center justify-center rounded-lg font-bold text-white"
-            style={{ backgroundColor: '#EF0107' }}
+            style={{ backgroundColor: getBadgeColor(badgeLabel) }}
           >
-            ARS
+            {badgeLabel}
           </div>
           <div>
             <h1 className="text-3xl font-semibold">{team.team}</h1>
@@ -240,21 +282,6 @@ function ArsenalClubPage() {
       </div>
     </div>
   )
-}
-
-function ComingSoonPage() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
-      <p className="text-gray-600 dark:text-gray-400">Coming soon — this club's page is being built.</p>
-    </div>
-  )
-}
-
-function ClubPage() {
-  const { slug } = useParams<{ slug: string }>()
-  const isArsenal = slug?.toUpperCase() === ARSENAL_SHORT_NAME
-
-  return isArsenal ? <ArsenalClubPage /> : <ComingSoonPage />
 }
 
 export default ClubPage
