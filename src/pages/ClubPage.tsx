@@ -78,7 +78,7 @@ function ArsenalClubPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-950 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
         <p className="text-red-500">{error}</p>
       </div>
     )
@@ -86,7 +86,7 @@ function ArsenalClubPage() {
 
   if (!team) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-950 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
         <p>Loading...</p>
       </div>
     )
@@ -104,17 +104,17 @@ function ArsenalClubPage() {
   const forwardCount = (playersByType[4] ?? []).length
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
       <div className="mx-auto max-w-4xl px-6 py-10">
         {isPreview && (
-          <div className="mb-6 rounded-lg border border-yellow-600 bg-yellow-950 px-4 py-2 text-sm text-yellow-300">
+          <div className="mb-6 rounded-lg border border-yellow-400 bg-yellow-100 px-4 py-2 text-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-950 dark:text-yellow-300">
             Preview mode — showing draft content that isn't published yet.
           </div>
         )}
 
         <header className="flex items-center gap-4">
           <div
-            className="flex h-14 w-14 items-center justify-center rounded-lg font-bold"
+            className="flex h-14 w-14 items-center justify-center rounded-lg font-bold text-white"
             style={{ backgroundColor: '#EF0107' }}
           >
             ARS
@@ -122,7 +122,7 @@ function ArsenalClubPage() {
           <div>
             <h1 className="text-3xl font-semibold">{team.team}</h1>
             {clubContent && (clubContent.manager || clubContent.formation) && (
-              <p className="mt-1 text-sm text-gray-400">
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                 {clubContent.manager}
                 {clubContent.manager && clubContent.formation ? ' · ' : ''}
                 {clubContent.formation}
@@ -132,10 +132,12 @@ function ArsenalClubPage() {
         </header>
 
         {clubContent && (clubContent.club_summary || clubContent.playstyle_summary) && (
-          <section className="mt-8 space-y-4 rounded-lg bg-gray-900 p-5">
-            {clubContent.club_summary && <p className="text-gray-200">{clubContent.club_summary}</p>}
+          <section className="mt-8 space-y-4 rounded-lg bg-gray-100 p-5 dark:bg-gray-900">
+            {clubContent.club_summary && (
+              <p className="text-gray-800 dark:text-gray-200">{clubContent.club_summary}</p>
+            )}
             {clubContent.playstyle_summary && (
-              <p className="text-sm text-gray-400">{clubContent.playstyle_summary}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{clubContent.playstyle_summary}</p>
             )}
           </section>
         )}
@@ -147,10 +149,10 @@ function ArsenalClubPage() {
               {transfers.map((transfer, index) => (
                 <div
                   key={`${transfer.player_name}-${index}`}
-                  className="rounded-lg bg-gray-900 p-4"
+                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
                 >
                   <p className="font-medium">{transfer.player_name}</p>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
                     {transfer.type === 'in' ? 'In' : transfer.type === 'out' ? 'Out' : 'Rumour'}
                     {transfer.fee ? ` · ${transfer.fee}` : ''}
                   </p>
@@ -164,16 +166,16 @@ function ArsenalClubPage() {
         )}
 
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-lg bg-gray-900 p-4">
-            <p className="text-sm text-gray-400">Squad Size</p>
+          <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Squad Size</p>
             <p className="text-2xl font-bold">{squadSize}</p>
           </div>
-          <div className="rounded-lg bg-gray-900 p-4">
-            <p className="text-sm text-gray-400">Defenders</p>
+          <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Defenders</p>
             <p className="text-2xl font-bold">{defenderCount}</p>
           </div>
-          <div className="rounded-lg bg-gray-900 p-4">
-            <p className="text-sm text-gray-400">Forwards</p>
+          <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Forwards</p>
             <p className="text-2xl font-bold">{forwardCount}</p>
           </div>
         </div>
@@ -190,12 +192,12 @@ function ArsenalClubPage() {
                   {groupPlayers.map((player, index) => (
                     <div
                       key={`${player.first_name}-${player.second_name}-${index}`}
-                      className="rounded-lg bg-gray-900 p-3"
+                      className="rounded-lg bg-gray-100 p-3 dark:bg-gray-900"
                     >
                       <p className="font-medium">
                         {player.first_name} {player.second_name}
                       </p>
-                      <p className="text-sm text-gray-400">{POSITION_LABELS[player.element_type]}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{POSITION_LABELS[player.element_type]}</p>
                     </div>
                   ))}
                 </div>
@@ -210,8 +212,8 @@ function ArsenalClubPage() {
 
 function ComingSoonPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-950 text-white">
-      <p className="text-gray-400">Coming soon — this club's page is being built.</p>
+    <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+      <p className="text-gray-600 dark:text-gray-400">Coming soon — this club's page is being built.</p>
     </div>
   )
 }

@@ -33,10 +33,10 @@ function Home() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
       <header style={{ backgroundColor: '#38003C' }}>
         <div className="mx-auto max-w-5xl px-6 py-8">
-          <h1 className="inline-block text-3xl font-bold">
+          <h1 className="inline-block text-3xl font-bold text-white">
             Premier League
             <span
               className="mt-2 block h-1 w-full rounded-full"
@@ -49,17 +49,19 @@ function Home() {
       <div className="mx-auto max-w-5xl px-6 py-10">
         {error && <p className="text-red-500">{error}</p>}
 
-        {!error && clubs.length === 0 && <p className="text-gray-400">Loading clubs...</p>}
+        {!error && clubs.length === 0 && (
+          <p className="text-gray-600 dark:text-gray-400">Loading clubs...</p>
+        )}
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {clubs.map((club) => (
             <Link
               key={club.id}
               to={`/club/${club.short_name.toLowerCase()}`}
-              className="flex flex-col items-center gap-3 rounded-lg bg-gray-900 p-4 text-center transition-colors hover:bg-gray-800"
+              className="flex flex-col items-center gap-3 rounded-lg bg-gray-100 p-4 text-center transition-colors hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800"
             >
               <div
-                className="flex h-14 w-14 items-center justify-center rounded-lg font-bold"
+                className="flex h-14 w-14 items-center justify-center rounded-lg font-bold text-white"
                 style={{ backgroundColor: getBadgeColor(club.short_name) }}
               >
                 {club.short_name}
