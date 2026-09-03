@@ -7,6 +7,22 @@ export default async function handler(req, res) {
   try {
     const club = (req.query?.club || 'ARS').toString()
 
+    const { data: existing, error: selectError } = await supabase
+      .from('clubs')
+      .select('name, squad')
+      .ilike('short_name', club)
+      .maybeSingle()
+
+    if (selectError) {
+      res.status(500).json({ error: 'Failed to query Supabase' })
+      return
+    }
+
+    if (existing) {
+      res.status(200).json({ team: existing.name, players: existing.squad })
+      return
+    }
+
     let data, team
     try {
       ;({ data, team } = await resolveClub(club))
@@ -30,7 +46,7 @@ export default async function handler(req, res) {
 
     const { error: upsertError } = await supabase
       .from('clubs')
-      .upsert({ name: team.name, squad: players }, { onConflict: 'name' })
+      .upsert({ name: team.name, short_name: team.short_name, squad: players }, { onConflict: 'name' })
 
     if (upsertError) {
       res.status(500).json({ error: 'Failed to save to Supabase' })
