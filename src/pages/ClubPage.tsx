@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
 
 const ARSENAL_SHORT_NAME = 'ARS'
 
@@ -112,7 +114,12 @@ function ArsenalClubPage() {
           </div>
         )}
 
-        <header className="flex items-center gap-4">
+        <motion.header
+          initial="hidden"
+          animate="visible"
+          variants={fadeSlideUp}
+          className="flex items-center gap-4"
+        >
           <div
             className="flex h-14 w-14 items-center justify-center rounded-lg font-bold text-white"
             style={{ backgroundColor: '#EF0107' }}
@@ -129,26 +136,39 @@ function ArsenalClubPage() {
               </p>
             )}
           </div>
-        </header>
+        </motion.header>
 
         {clubContent && (clubContent.club_summary || clubContent.playstyle_summary) && (
-          <section className="mt-8 space-y-4 rounded-lg bg-gray-100 p-5 dark:bg-gray-900">
+          <motion.section
+            initial="hidden"
+            animate="visible"
+            variants={fadeUp}
+            transition={{ duration: 0.25, ease: 'easeOut', delay: 0.1 }}
+            className="mt-8 space-y-4 rounded-lg bg-gray-100 p-5 dark:bg-gray-900"
+          >
             {clubContent.club_summary && (
               <p className="text-gray-800 dark:text-gray-200">{clubContent.club_summary}</p>
             )}
             {clubContent.playstyle_summary && (
               <p className="text-sm text-gray-600 dark:text-gray-400">{clubContent.playstyle_summary}</p>
             )}
-          </section>
+          </motion.section>
         )}
 
         {transfers.length > 0 && (
           <section className="mt-8">
             <h2 className="mb-3 text-xl font-semibold">Transfers</h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <motion.div
+              initial="hidden"
+              animate="visible"
+              variants={staggerContainer(0.06, 0.15)}
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+            >
               {transfers.map((transfer, index) => (
-                <div
+                <motion.div
                   key={`${transfer.player_name}-${index}`}
+                  variants={fadeUp}
+                  {...cardHover}
                   className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
                 >
                   <p className="font-medium">{transfer.player_name}</p>
@@ -159,48 +179,60 @@ function ArsenalClubPage() {
                   {transfer.source_name && (
                     <p className="mt-1 text-xs text-gray-500">Source: {transfer.source_name}</p>
                   )}
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </section>
         )}
 
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer(0.06, 0.25)}
+          className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3"
+        >
+          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
             <p className="text-sm text-gray-600 dark:text-gray-400">Squad Size</p>
             <p className="text-2xl font-bold">{squadSize}</p>
-          </div>
-          <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          </motion.div>
+          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
             <p className="text-sm text-gray-600 dark:text-gray-400">Defenders</p>
             <p className="text-2xl font-bold">{defenderCount}</p>
-          </div>
-          <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          </motion.div>
+          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
             <p className="text-sm text-gray-600 dark:text-gray-400">Forwards</p>
             <p className="text-2xl font-bold">{forwardCount}</p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         <div className="mt-10 space-y-8">
-          {POSITION_GROUPS.map((group) => {
+          {POSITION_GROUPS.map((group, groupIndex) => {
             const groupPlayers = playersByType[group.type] ?? []
             if (groupPlayers.length === 0) return null
 
             return (
               <section key={group.type}>
                 <h2 className="mb-3 text-xl font-semibold">{group.heading}</h2>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                <motion.div
+                  initial="hidden"
+                  animate="visible"
+                  variants={staggerContainer(0.05, 0.35 + groupIndex * 0.1)}
+                  className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
+                >
                   {groupPlayers.map((player, index) => (
-                    <div
+                    <motion.div
                       key={`${player.first_name}-${player.second_name}-${index}`}
+                      variants={fadeUp}
+                      {...cardHover}
                       className="rounded-lg bg-gray-100 p-3 dark:bg-gray-900"
                     >
                       <p className="font-medium">
                         {player.first_name} {player.second_name}
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">{POSITION_LABELS[player.element_type]}</p>
-                    </div>
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               </section>
             )
           })}
