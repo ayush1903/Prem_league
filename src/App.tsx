@@ -11,6 +11,26 @@ type TeamResponse = {
   players: Player[]
 }
 
+type ClubContent = {
+  club_name: string
+  manager: string | null
+  formation: string | null
+  club_summary: string | null
+  playstyle_summary: string | null
+  status: string
+  updated_at: string
+}
+
+type Transfer = {
+  club_name: string
+  player_name: string
+  type: string | null
+  fee: string | null
+  source_name: string | null
+  date_logged: string
+  status: string
+}
+
 const POSITION_LABELS: Record<number, string> = {
   1: 'Goalkeeper',
   2: 'Defender',
@@ -25,15 +45,31 @@ const POSITION_GROUPS: { type: number; heading: string }[] = [
   { type: 4, heading: 'Forwards' },
 ]
 
+const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === '1'
+
 function App() {
   const [team, setTeam] = useState<TeamResponse | null>(null)
+  const [clubContent, setClubContent] = useState<ClubContent | null>(null)
+  const [transfers, setTransfers] = useState<Transfer[]>([])
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const previewParam = isPreview ? '?preview=1' : ''
+
     fetch('/api/team')
       .then((res) => res.json())
       .then((data) => setTeam(data))
       .catch(() => setError('Failed to load team data'))
+
+    fetch(`/api/club-content${previewParam}`)
+      .then((res) => res.json())
+      .then((data) => setClubContent(data.clubContent ?? null))
+      .catch(() => {})
+
+    fetch(`/api/transfers${previewParam}`)
+      .then((res) => res.json())
+      .then((data) => setTransfers(data.transfers ?? []))
+      .catch(() => {})
   }, [])
 
   if (error) {
@@ -66,6 +102,12 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <div className="mx-auto max-w-4xl px-6 py-10">
+        {isPreview && (
+          <div className="mb-6 rounded-lg border border-yellow-600 bg-yellow-950 px-4 py-2 text-sm text-yellow-300">
+            Preview mode — showing draft content that isn't published yet.
+          </div>
+        )}
+
         <header className="flex items-center gap-4">
           <div
             className="flex h-14 w-14 items-center justify-center rounded-lg font-bold"
@@ -73,8 +115,49 @@ function App() {
           >
             ARS
           </div>
-          <h1 className="text-3xl font-semibold">{team.team}</h1>
+          <div>
+            <h1 className="text-3xl font-semibold">{team.team}</h1>
+            {clubContent && (clubContent.manager || clubContent.formation) && (
+              <p className="mt-1 text-sm text-gray-400">
+                {clubContent.manager}
+                {clubContent.manager && clubContent.formation ? ' · ' : ''}
+                {clubContent.formation}
+              </p>
+            )}
+          </div>
         </header>
+
+        {clubContent && (clubContent.club_summary || clubContent.playstyle_summary) && (
+          <section className="mt-8 space-y-4 rounded-lg bg-gray-900 p-5">
+            {clubContent.club_summary && <p className="text-gray-200">{clubContent.club_summary}</p>}
+            {clubContent.playstyle_summary && (
+              <p className="text-sm text-gray-400">{clubContent.playstyle_summary}</p>
+            )}
+          </section>
+        )}
+
+        {transfers.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 text-xl font-semibold">Transfers</h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {transfers.map((transfer, index) => (
+                <div
+                  key={`${transfer.player_name}-${index}`}
+                  className="rounded-lg bg-gray-900 p-4"
+                >
+                  <p className="font-medium">{transfer.player_name}</p>
+                  <p className="text-sm text-gray-400">
+                    {transfer.type === 'in' ? 'In' : transfer.type === 'out' ? 'Out' : 'Rumour'}
+                    {transfer.fee ? ` · ${transfer.fee}` : ''}
+                  </p>
+                  {transfer.source_name && (
+                    <p className="mt-1 text-xs text-gray-500">Source: {transfer.source_name}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-lg bg-gray-900 p-4">
