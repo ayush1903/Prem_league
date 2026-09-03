@@ -1,37 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
+import { resolveClub } from './_lib/resolveClub.js'
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY)
 
 export default async function handler(req, res) {
   try {
-    const { data: existing, error: selectError } = await supabase
-      .from('clubs')
-      .select('name, squad')
-      .ilike('name', 'arsenal')
-      .maybeSingle()
+    const club = (req.query?.club || 'ARS').toString()
 
-    if (selectError) {
-      res.status(500).json({ error: 'Failed to query Supabase' })
-      return
-    }
-
-    if (existing) {
-      res.status(200).json({ team: existing.name, players: existing.squad })
-      return
-    }
-
-    const response = await fetch('https://fantasy.premierleague.com/api/bootstrap-static/')
-
-    if (!response.ok) {
+    let data, team
+    try {
+      ;({ data, team } = await resolveClub(club))
+    } catch {
       res.status(502).json({ error: 'Failed to fetch data from Fantasy Premier League API' })
       return
     }
-
-    const data = await response.json()
-
-    const team = data.teams.find(
-      (t) => t.name.toLowerCase() === 'arsenal',
-    )
 
     if (!team) {
       res.status(404).json({ error: 'Team not found' })
