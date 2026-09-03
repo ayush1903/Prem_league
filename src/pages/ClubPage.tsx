@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
+
+const ARSENAL_SHORT_NAME = 'ARS'
 
 type Player = {
   first_name: string
@@ -47,8 +50,8 @@ const POSITION_GROUPS: { type: number; heading: string }[] = [
 
 const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === '1'
 
-// Hardcoded to Arsenal for now — the :slug param will drive this in a later step.
-function ClubPage() {
+// Hardcoded to Arsenal content for now — only rendered when the slug matches Arsenal.
+function ArsenalClubPage() {
   const [team, setTeam] = useState<TeamResponse | null>(null)
   const [clubContent, setClubContent] = useState<ClubContent | null>(null)
   const [transfers, setTransfers] = useState<Transfer[]>([])
@@ -203,6 +206,21 @@ function ClubPage() {
       </div>
     </div>
   )
+}
+
+function ComingSoonPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-950 text-white">
+      <p className="text-gray-400">Coming soon — this club's page is being built.</p>
+    </div>
+  )
+}
+
+function ClubPage() {
+  const { slug } = useParams<{ slug: string }>()
+  const isArsenal = slug?.toUpperCase() === ARSENAL_SHORT_NAME
+
+  return isArsenal ? <ArsenalClubPage /> : <ComingSoonPage />
 }
 
 export default ClubPage
