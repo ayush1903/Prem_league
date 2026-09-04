@@ -22,6 +22,7 @@ type ClubContent = {
   club_summary: string | null
   playstyle_summary: string | null
   net_spend: string | null
+  gross_spend: string | null
   status: string
   updated_at: string
 }
@@ -247,8 +248,11 @@ function ClubPage() {
             <p className="text-2xl font-bold">{forwardCount}</p>
           </motion.div>
           <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Net Spend</p>
-            <p className="text-2xl font-bold">{clubContent?.net_spend ?? '—'}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Spend</p>
+            <p className="text-lg font-bold">Net: {clubContent?.net_spend ?? '—'}</p>
+            {clubContent?.gross_spend && (
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Gross: {clubContent.gross_spend}</p>
+            )}
           </motion.div>
         </motion.div>
 
