@@ -35,12 +35,14 @@ export default async function handler(req, res) {
     const { data, error } = await query.maybeSingle()
 
     if (error) {
+      console.error('club-content: Supabase query failed', error)
       res.status(500).json({ error: 'Failed to query Supabase' })
       return
     }
 
     res.status(200).json({ clubContent: data })
   } catch (error) {
+    console.error('club-content: unhandled error', error)
     res.status(500).json({ error: 'Internal server error' })
   }
 }
