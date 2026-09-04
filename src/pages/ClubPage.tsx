@@ -21,6 +21,7 @@ type ClubContent = {
   formation: string | null
   club_summary: string | null
   playstyle_summary: string | null
+  net_spend: string | null
   status: string
   updated_at: string
 }
@@ -231,7 +232,7 @@ function ClubPage() {
           initial="hidden"
           animate="visible"
           variants={staggerContainer(0.06, 0.25)}
-          className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3"
+          className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4"
         >
           <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
             <p className="text-sm text-gray-600 dark:text-gray-400">Squad Size</p>
@@ -244,6 +245,10 @@ function ClubPage() {
           <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
             <p className="text-sm text-gray-600 dark:text-gray-400">Forwards</p>
             <p className="text-2xl font-bold">{forwardCount}</p>
+          </motion.div>
+          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Net Spend</p>
+            <p className="text-2xl font-bold">{clubContent?.net_spend ?? '—'}</p>
           </motion.div>
         </motion.div>
 

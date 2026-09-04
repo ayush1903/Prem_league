@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
     let query = supabase
       .from('club_content')
-      .select('club_name, manager, formation, club_summary, playstyle_summary, status, updated_at')
+      .select('club_name, manager, formation, club_summary, playstyle_summary, net_spend, status, updated_at')
       .ilike('club_name', team.name)
       .order('updated_at', { ascending: false })
       .limit(1)
