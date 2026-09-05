@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
 import { getBadgeColor } from '../lib/clubColors'
 
+const MotionLink = motion.create(Link)
+
 type Player = {
+  id: number
   first_name: string
   second_name: string
   element_type: number
@@ -271,17 +274,18 @@ function ClubPage() {
                   className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
                 >
                   {groupPlayers.map((player, index) => (
-                    <motion.div
+                    <MotionLink
                       key={`${player.first_name}-${player.second_name}-${index}`}
+                      to={`/club/${slug}/player/${player.id}`}
                       variants={fadeUp}
                       {...cardHover}
-                      className="rounded-lg bg-gray-100 p-3 dark:bg-gray-900"
+                      className="block rounded-lg bg-gray-100 p-3 dark:bg-gray-900"
                     >
                       <p className="font-medium">
                         {player.first_name} {player.second_name}
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">{POSITION_LABELS[player.element_type]}</p>
-                    </motion.div>
+                    </MotionLink>
                   ))}
                 </motion.div>
               </section>

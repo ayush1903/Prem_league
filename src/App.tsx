@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import Home from './pages/Home'
 import ClubPage from './pages/ClubPage'
+import PlayerPage from './pages/PlayerPage'
 import TransfersPage from './pages/TransfersPage'
 import ThemeToggle from './components/ThemeToggle'
 
@@ -38,6 +39,14 @@ function AnimatedRoutes() {
           element={
             <PageTransition>
               <ClubPage />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/club/:slug/player/:playerId"
+          element={
+            <PageTransition>
+              <PlayerPage />
             </PageTransition>
           }
         />
