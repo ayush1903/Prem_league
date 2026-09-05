@@ -12,3 +12,17 @@ export function getBadgeColor(shortName: string): string {
   if (normalized === 'ARS') return '#EF0107'
   return `hsl(${hashHue(normalized)}, 60%, 38%)`
 }
+
+// Falls back to deriving a short badge label from the full club name when
+// a real short_name isn't available yet (e.g. clubs not yet cached in Supabase).
+export function getClubInitials(clubName: string, shortName?: string | null): string {
+  if (shortName) return shortName.toUpperCase()
+
+  const words = clubName.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 1) return words[0].slice(0, 3).toUpperCase()
+  return words
+    .map((word) => word[0])
+    .join('')
+    .slice(0, 3)
+    .toUpperCase()
+}

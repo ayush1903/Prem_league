@@ -31,7 +31,7 @@ function Home() {
         variants={fadeSlideUp}
         style={{ backgroundColor: '#38003C' }}
       >
-        <div className="mx-auto max-w-5xl px-6 py-8">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-8">
           <h1 className="inline-block text-3xl font-bold text-white">
             Premier League
             <span
@@ -39,6 +39,12 @@ function Home() {
               style={{ backgroundColor: '#00FF85' }}
             />
           </h1>
+          <Link
+            to="/transfers"
+            className="text-sm font-medium text-white/80 transition-colors hover:text-white"
+          >
+            Transfers
+          </Link>
         </div>
       </motion.header>
 
