@@ -38,10 +38,18 @@ export default async function handler(req, res) {
 
     const players = data.elements
       .filter((element) => element.team === team.id)
-      .map(({ first_name, second_name, element_type }) => ({
+      .map(({ id, first_name, second_name, element_type, goals_scored, assists, minutes, total_points, now_cost, form, selected_by_percent }) => ({
+        id,
         first_name,
         second_name,
         element_type,
+        goals_scored,
+        assists,
+        minutes,
+        total_points,
+        now_cost,
+        form,
+        selected_by_percent,
       }))
 
     const { error: upsertError } = await supabase
