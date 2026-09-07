@@ -16,6 +16,9 @@ type Player = {
   now_cost: number
   form: string
   selected_by_percent: string
+  status: string
+  news: string
+  chance_of_playing_this_round: number | null
 }
 
 type TeamResponse = {
@@ -30,6 +33,13 @@ const POSITION_LABELS: Record<number, string> = {
   2: 'Defender',
   3: 'Midfielder',
   4: 'Forward',
+}
+
+const AVAILABILITY_LABELS: Record<string, string> = {
+  i: 'Injured',
+  s: 'Suspended',
+  d: 'Doubtful',
+  u: 'Unavailable',
 }
 
 function PlayerNotFoundPage() {
@@ -138,6 +148,26 @@ function PlayerPage() {
             </p>
           </div>
         </motion.header>
+
+        {player.status !== 'a' && player.news && (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeUp}
+            transition={{ duration: 0.25, ease: 'easeOut', delay: 0.05 }}
+            className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/40"
+          >
+            <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+              {AVAILABILITY_LABELS[player.status] ?? 'Availability'}
+            </p>
+            <p className="mt-1 text-sm text-red-800 dark:text-red-300">{player.news}</p>
+            {player.status === 'd' && player.chance_of_playing_this_round !== null && (
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                {player.chance_of_playing_this_round}% chance of playing
+              </p>
+            )}
+          </motion.div>
+        )}
 
         <motion.div
           initial="hidden"
