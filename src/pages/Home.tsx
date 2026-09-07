@@ -47,6 +47,12 @@ function Home() {
               Table
             </Link>
             <Link
+              to="/fixtures"
+              className="text-sm font-medium text-white/80 transition-colors hover:text-white"
+            >
+              Fixtures
+            </Link>
+            <Link
               to="/transfers"
               className="text-sm font-medium text-white/80 transition-colors hover:text-white"
             >

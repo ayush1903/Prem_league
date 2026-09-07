@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer } from '../lib/motion'
 import { getBadgeColor } from '../lib/clubColors'
+import { normalizeTla } from '../lib/tla'
 
 type Club = {
   id: number
@@ -33,14 +34,8 @@ type StandingsPayload = {
   standings: StandingsGroup[]
 }
 
-// football-data.org uses 'NOT' for Nottingham Forest where our clubs use 'NFO'.
-const TLA_OVERRIDES: Record<string, string> = {
-  NOT: 'NFO',
-}
-
 function resolveClub(tla: string, clubsByShortName: Record<string, Club>): Club | null {
-  const shortName = TLA_OVERRIDES[tla] ?? tla
-  const club = clubsByShortName[shortName]
+  const club = clubsByShortName[normalizeTla(tla)]
 
   if (!club) {
     console.warn(`/table: standings tla "${tla}" did not match any known club short_name`)

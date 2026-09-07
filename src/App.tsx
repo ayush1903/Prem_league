@@ -6,6 +6,7 @@ import ClubPage from './pages/ClubPage'
 import PlayerPage from './pages/PlayerPage'
 import TransfersPage from './pages/TransfersPage'
 import TablePage from './pages/TablePage'
+import FixturesPage from './pages/FixturesPage'
 import ThemeToggle from './components/ThemeToggle'
 
 function PageTransition({ children }: { children: ReactNode }) {
@@ -64,6 +65,14 @@ function AnimatedRoutes() {
           element={
             <PageTransition>
               <TablePage />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/fixtures"
+          element={
+            <PageTransition>
+              <FixturesPage />
             </PageTransition>
           }
         />
