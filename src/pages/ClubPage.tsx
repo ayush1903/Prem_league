@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
 import { getBadgeColor } from '../lib/clubColors'
+import { normalizeTla } from '../lib/tla'
 
 const MotionLink = motion.create(Link)
 
@@ -40,7 +41,57 @@ type Transfer = {
   status: string
 }
 
+type MatchTeam = {
+  name: string
+  tla: string
+}
+
+type Match = {
+  id: number
+  utcDate: string
+  homeTeam: MatchTeam
+  awayTeam: MatchTeam
+}
+
+type NextMatch = {
+  id: number
+  utcDate: string
+  competitionLabel: string
+  opponentName: string
+  isHome: boolean
+}
+
 type Status = 'loading' | 'ready' | 'not-found' | 'error'
+
+const FIXTURE_COMPETITIONS: { code: string; label: string }[] = [
+  { code: 'PL', label: 'Premier League' },
+  { code: 'CL', label: 'Champions League' },
+]
+
+function extractClubMatches(matches: Match[], competitionLabel: string, shortName: string): NextMatch[] {
+  return matches.flatMap((match): NextMatch[] => {
+    const homeShortName = normalizeTla(match.homeTeam.tla)
+    const awayShortName = normalizeTla(match.awayTeam.tla)
+
+    if (homeShortName === shortName) {
+      return [{ id: match.id, utcDate: match.utcDate, competitionLabel, opponentName: match.awayTeam.name, isHome: true }]
+    }
+    if (awayShortName === shortName) {
+      return [{ id: match.id, utcDate: match.utcDate, competitionLabel, opponentName: match.homeTeam.name, isHome: false }]
+    }
+    return []
+  })
+}
+
+function formatMatchDate(utcDate: string): string {
+  return new Date(utcDate).toLocaleString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
 
 const POSITION_LABELS: Record<number, string> = {
   1: 'Goalkeeper',
@@ -74,6 +125,7 @@ function ClubPage() {
   const [team, setTeam] = useState<TeamResponse | null>(null)
   const [clubContent, setClubContent] = useState<ClubContent | null>(null)
   const [transfers, setTransfers] = useState<Transfer[]>([])
+  const [nextMatch, setNextMatch] = useState<NextMatch | null>(null)
 
   useEffect(() => {
     if (!slug) {
@@ -85,8 +137,10 @@ function ClubPage() {
     setTeam(null)
     setClubContent(null)
     setTransfers([])
+    setNextMatch(null)
 
     const clubParam = `club=${encodeURIComponent(slug)}`
+    const shortName = slug.toUpperCase()
     const previewParam = isPreview ? '&preview=1' : ''
 
     fetch(`/api/team?${clubParam}`)
@@ -118,6 +172,20 @@ function ClubPage() {
       .then((res) => res.json())
       .then((data) => setTransfers(data.transfers ?? []))
       .catch(() => {})
+
+    Promise.all(
+      FIXTURE_COMPETITIONS.map(({ code, label }) =>
+        fetch(`/api/fixtures?competition=${code}`)
+          .then((res) => res.json())
+          .then((data) => extractClubMatches(data.fixtures?.matches ?? [], label, shortName))
+          .catch(() => []),
+      ),
+    ).then((matchGroups) => {
+      const soonest = matchGroups
+        .flat()
+        .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime())[0]
+      setNextMatch(soonest ?? null)
+    })
   }, [slug])
 
   if (status === 'not-found') {
@@ -184,6 +252,29 @@ function ClubPage() {
             )}
           </div>
         </motion.header>
+
+        {nextMatch && (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeUp}
+            transition={{ duration: 0.25, ease: 'easeOut', delay: 0.05 }}
+            className="mt-6 flex items-center justify-between rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+          >
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Next match</p>
+              <p className="mt-1 font-medium">
+                {nextMatch.isHome ? 'vs' : '@'} {nextMatch.opponentName}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {nextMatch.competitionLabel} · {nextMatch.isHome ? 'Home' : 'Away'}
+              </p>
+            </div>
+            <p className="shrink-0 text-right text-sm text-gray-600 dark:text-gray-400">
+              {formatMatchDate(nextMatch.utcDate)}
+            </p>
+          </motion.div>
+        )}
 
         {clubContent && (clubContent.club_summary || clubContent.playstyle_summary) && (
           <motion.section
