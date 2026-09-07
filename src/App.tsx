@@ -5,6 +5,7 @@ import Home from './pages/Home'
 import ClubPage from './pages/ClubPage'
 import PlayerPage from './pages/PlayerPage'
 import TransfersPage from './pages/TransfersPage'
+import TablePage from './pages/TablePage'
 import ThemeToggle from './components/ThemeToggle'
 
 function PageTransition({ children }: { children: ReactNode }) {
@@ -55,6 +56,14 @@ function AnimatedRoutes() {
           element={
             <PageTransition>
               <TransfersPage />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/table"
+          element={
+            <PageTransition>
+              <TablePage />
             </PageTransition>
           }
         />

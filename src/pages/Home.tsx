@@ -39,12 +39,20 @@ function Home() {
               style={{ backgroundColor: '#00FF85' }}
             />
           </h1>
-          <Link
-            to="/transfers"
-            className="text-sm font-medium text-white/80 transition-colors hover:text-white"
-          >
-            Transfers
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link
+              to="/table"
+              className="text-sm font-medium text-white/80 transition-colors hover:text-white"
+            >
+              Table
+            </Link>
+            <Link
+              to="/transfers"
+              className="text-sm font-medium text-white/80 transition-colors hover:text-white"
+            >
+              Transfers
+            </Link>
+          </div>
         </div>
       </motion.header>
 
