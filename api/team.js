@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       return
     }
 
-    if (existing) {
+    if (existing?.squad?.length) {
       res.status(200).json({ team: existing.name, players: existing.squad })
       return
     }
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
 
     const players = data.elements
       .filter((element) => element.team === team.id)
-      .map(({ id, first_name, second_name, element_type, goals_scored, assists, minutes, total_points, now_cost, form, selected_by_percent }) => ({
+      .map(({ id, first_name, second_name, element_type, goals_scored, assists, minutes, total_points, now_cost, form, selected_by_percent, status, news, chance_of_playing_this_round, chance_of_playing_next_round }) => ({
         id,
         first_name,
         second_name,
@@ -50,6 +50,10 @@ export default async function handler(req, res) {
         now_cost,
         form,
         selected_by_percent,
+        status,
+        news,
+        chance_of_playing_this_round,
+        chance_of_playing_next_round,
       }))
 
     const { error: upsertError } = await supabase
