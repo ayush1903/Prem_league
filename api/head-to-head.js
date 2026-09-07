@@ -29,6 +29,7 @@ async function getFormFor(teamId) {
   if (!row) return null
 
   return {
+    name: row.team?.name,
     position: row.position,
     points: row.points,
     playedGames: row.playedGames,
