@@ -1,12 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
+import { normalizeTla } from './_lib/tla.js'
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY)
 
 const CACHE_TTL_MS = 20 * 60 * 1000
 const ALLOWED_COMPETITIONS = ['PL', 'CL']
-
-// football-data.org uses 'NOT' for Nottingham Forest where our clubs use 'NFO'.
-const TLA_OVERRIDES = { NOT: 'NFO' }
 
 async function fetchKnownShortNames() {
   const response = await fetch('https://fantasy.premierleague.com/api/bootstrap-static/')
@@ -21,7 +19,7 @@ async function fetchKnownShortNames() {
 
 function isKnownClub(tla, knownShortNames) {
   if (!tla) return false
-  return knownShortNames.has(TLA_OVERRIDES[tla] ?? tla)
+  return knownShortNames.has(normalizeTla(tla))
 }
 
 async function filterToKnownClubs(payload) {
