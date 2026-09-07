@@ -12,6 +12,9 @@ type Player = {
   first_name: string
   second_name: string
   element_type: number
+  status: string
+  news: string
+  chance_of_playing_this_round: number | null
 }
 
 type TeamResponse = {
@@ -106,6 +109,44 @@ const POSITION_GROUPS: { type: number; heading: string }[] = [
   { type: 3, heading: 'Midfielders' },
   { type: 4, heading: 'Forwards' },
 ]
+
+// FPL's news field describes a permanent departure or loan move in prose
+// (e.g. "Joined Fulham permanently", "Signed on loan for..."); those players
+// are no longer really part of the club, so they're dropped from the squad
+// list entirely rather than shown with a status badge.
+function isUnavailable(player: Player): boolean {
+  const news = player.news.toLowerCase()
+  return (
+    news.includes('permanently') ||
+    news.includes('loan') ||
+    news.includes('departed') ||
+    news.includes('returned to')
+  )
+}
+
+type StatusBadge = {
+  label: string
+  className: string
+}
+
+const BADGE_BASE_CLASSES = 'mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none'
+
+function getStatusBadge(player: Player): StatusBadge | null {
+  if (player.status === 'i') {
+    return { label: 'Injured', className: `${BADGE_BASE_CLASSES} bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400` }
+  }
+  if (player.status === 's') {
+    return { label: 'Suspended', className: `${BADGE_BASE_CLASSES} bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400` }
+  }
+  if (player.status === 'd') {
+    const chance = player.chance_of_playing_this_round
+    return {
+      label: chance !== null ? `${chance}% chance` : 'Doubtful',
+      className: `${BADGE_BASE_CLASSES} bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400`,
+    }
+  }
+  return null
+}
 
 const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === '1'
 
@@ -209,7 +250,7 @@ function ClubPage() {
   }
 
   const badgeLabel = (slug ?? '').toUpperCase()
-  const players = team.players ?? []
+  const players = (team.players ?? []).filter((player) => !isUnavailable(player))
   const playersByType = players.reduce<Record<number, Player[]>>((acc, player) => {
     acc[player.element_type] = acc[player.element_type] ?? []
     acc[player.element_type].push(player)
@@ -364,20 +405,25 @@ function ClubPage() {
                   variants={staggerContainer(0.05, 0.35 + groupIndex * 0.1)}
                   className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
                 >
-                  {groupPlayers.map((player, index) => (
-                    <MotionLink
-                      key={`${player.first_name}-${player.second_name}-${index}`}
-                      to={`/club/${slug}/player/${player.id}`}
-                      variants={fadeUp}
-                      {...cardHover}
-                      className="block rounded-lg bg-gray-100 p-3 dark:bg-gray-900"
-                    >
-                      <p className="font-medium">
-                        {player.first_name} {player.second_name}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{POSITION_LABELS[player.element_type]}</p>
-                    </MotionLink>
-                  ))}
+                  {groupPlayers.map((player, index) => {
+                    const statusBadge = getStatusBadge(player)
+
+                    return (
+                      <MotionLink
+                        key={`${player.first_name}-${player.second_name}-${index}`}
+                        to={`/club/${slug}/player/${player.id}`}
+                        variants={fadeUp}
+                        {...cardHover}
+                        className="block rounded-lg bg-gray-100 p-3 dark:bg-gray-900"
+                      >
+                        <p className="font-medium">
+                          {player.first_name} {player.second_name}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{POSITION_LABELS[player.element_type]}</p>
+                        {statusBadge && <span className={statusBadge.className}>{statusBadge.label}</span>}
+                      </MotionLink>
+                    )
+                  })}
                 </motion.div>
               </section>
             )
