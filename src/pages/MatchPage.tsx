@@ -44,35 +44,75 @@ type FormEntry = {
   goalDifference: number
 }
 
-type H2HTeamAggregate = {
-  id: number
-  name: string
-  wins: number
-  draws: number
-  losses: number
-}
-
 type H2HMatch = {
   id: number
   utcDate: string
   competition?: { name: string }
   homeTeam: MatchTeam
   awayTeam: MatchTeam
-  score?: { fullTime: { home: number | null; away: number | null } }
+  score?: {
+    winner: 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null
+    fullTime: { home: number | null; away: number | null }
+  }
 }
 
+// football-data.org's own `aggregates` block on the free tier doesn't
+// reliably reflect the `matches` array it ships alongside (numberOfMatches
+// consistently equals the request's `limit` rather than the real meeting
+// count, and wins/draws/losses don't match the actual results) — so the
+// summary is computed here from `matches` instead of trusted from upstream.
 type HeadToHeadResponse = {
   headToHead: {
     matches?: H2HMatch[]
-    aggregates?: {
-      numberOfMatches?: number
-      homeTeam?: H2HTeamAggregate
-      awayTeam?: H2HTeamAggregate
-    }
   }
   form: {
     home: FormEntry | null
     away: FormEntry | null
+  }
+}
+
+type H2HSummary = {
+  numberOfMatches: number
+  totalGoals: number
+  home: { wins: number; draws: number; losses: number }
+  away: { wins: number; draws: number; losses: number }
+}
+
+function summarizeH2H(matches: H2HMatch[], homeTla: string, awayTla: string): H2HSummary {
+  const home = normalizeTla(homeTla)
+  const away = normalizeTla(awayTla)
+
+  let homeWins = 0
+  let awayWins = 0
+  let draws = 0
+  let totalGoals = 0
+
+  for (const meeting of matches) {
+    const meetingHome = normalizeTla(meeting.homeTeam.tla)
+    const meetingAway = normalizeTla(meeting.awayTeam.tla)
+    const homeGoals = meeting.score?.fullTime.home
+    const awayGoals = meeting.score?.fullTime.away
+
+    if (typeof homeGoals === 'number' && typeof awayGoals === 'number') {
+      totalGoals += homeGoals + awayGoals
+    }
+
+    if (meeting.score?.winner === 'DRAW') {
+      draws += 1
+    } else if (meeting.score?.winner === 'HOME_TEAM') {
+      if (meetingHome === home) homeWins += 1
+      else if (meetingHome === away) awayWins += 1
+    } else if (meeting.score?.winner === 'AWAY_TEAM') {
+      if (meetingAway === home) homeWins += 1
+      else if (meetingAway === away) awayWins += 1
+    }
+  }
+
+  return {
+    numberOfMatches: matches.length,
+    totalGoals,
+    home: { wins: homeWins, draws, losses: awayWins },
+    away: { wins: awayWins, draws, losses: homeWins },
   }
 }
 
@@ -304,8 +344,9 @@ function MatchPage() {
     )
   }
 
-  const aggregates = headToHead?.headToHead.aggregates
-  const recentMeetings = (headToHead?.headToHead.matches ?? []).slice(0, RECENT_MEETINGS_COUNT)
+  const allMeetings = headToHead?.headToHead.matches ?? []
+  const h2hSummary = allMeetings.length > 0 ? summarizeH2H(allMeetings, match.homeTeam.tla, match.awayTeam.tla) : null
+  const recentMeetings = allMeetings.slice(0, RECENT_MEETINGS_COUNT)
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
@@ -336,23 +377,28 @@ function MatchPage() {
           className="mt-10"
         >
           <h2 className="mb-3 text-xl font-semibold">Head-to-head</h2>
-          {aggregates?.homeTeam && aggregates?.awayTeam ? (
+          {h2hSummary ? (
             <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Last {aggregates.numberOfMatches ?? recentMeetings.length} meetings
+                Last {h2hSummary.numberOfMatches} {h2hSummary.numberOfMatches === 1 ? 'meeting' : 'meetings'} ·{' '}
+                {h2hSummary.totalGoals} goals
               </p>
               <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                 <div>
-                  <p className="text-2xl font-bold">{aggregates.homeTeam.wins}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{aggregates.homeTeam.name} wins</p>
+                  <p className="text-2xl font-bold">{h2hSummary.home.wins}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {homeClub?.name ?? match.homeTeam.name} wins
+                  </p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{aggregates.homeTeam.draws}</p>
+                  <p className="text-2xl font-bold">{h2hSummary.home.draws}</p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">Draws</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{aggregates.awayTeam.wins}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{aggregates.awayTeam.name} wins</p>
+                  <p className="text-2xl font-bold">{h2hSummary.away.wins}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    {awayClub?.name ?? match.awayTeam.name} wins
+                  </p>
                 </div>
               </div>
             </div>
