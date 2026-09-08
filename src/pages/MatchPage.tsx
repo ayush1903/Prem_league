@@ -407,7 +407,10 @@ function MatchPage() {
           )}
 
           {recentMeetings.length > 0 && (
-            <div className="mt-3 flex flex-col gap-2">
+            <div className="mt-4 flex flex-col gap-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                {recentMeetings.length < allMeetings.length ? 'Most recent results' : 'Results'}
+              </p>
               {recentMeetings.map((meeting) => (
                 <div
                   key={meeting.id}
