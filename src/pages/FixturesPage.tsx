@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
-import { getBadgeColor } from '../lib/clubColors'
 import { normalizeTla } from '../lib/tla'
+import ClubCrest from '../components/ClubCrest'
+import CompetitionLogo from '../components/CompetitionLogo'
 
 const MotionLink = motion.create(Link)
 
@@ -16,6 +17,7 @@ type Club = {
 type MatchTeam = {
   name: string
   tla: string
+  crest: string | null
 }
 
 type Match = {
@@ -23,6 +25,7 @@ type Match = {
   utcDate: string
   homeTeam: MatchTeam
   awayTeam: MatchTeam
+  competition?: { name: string; emblem: string | null }
 }
 
 type Competition = 'PL' | 'CL'
@@ -48,18 +51,10 @@ function resolveClub(tla: string, clubsByShortName: Record<string, Club>): Club 
 
 function TeamBadge({ team, club }: { team: MatchTeam; club: Club | null }) {
   const label = club?.short_name ?? team.tla
-  const badgeClasses = club
-    ? 'flex h-8 w-8 shrink-0 items-center justify-center rounded font-bold text-white'
-    : 'flex h-8 w-8 shrink-0 items-center justify-center rounded bg-gray-400 font-bold text-white dark:bg-gray-600'
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <div
-        className={badgeClasses}
-        style={{ backgroundColor: club ? getBadgeColor(club.short_name) : undefined, fontSize: '0.65rem' }}
-      >
-        {label}
-      </div>
+      <ClubCrest label={label} crestUrl={team.crest} alt={club?.name ?? team.name} known={Boolean(club)} size="xs" />
       <span className={`truncate ${club ? 'font-medium' : 'text-gray-600 dark:text-gray-400'}`}>
         {club?.name ?? team.name}
       </span>
@@ -71,6 +66,7 @@ function FixturesPage() {
   const [competition, setCompetition] = useState<Competition>('PL')
   const [clubsByShortName, setClubsByShortName] = useState<Record<string, Club>>({})
   const [matches, setMatches] = useState<Match[]>([])
+  const [competitionEmblems, setCompetitionEmblems] = useState<Partial<Record<Competition, string | null>>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -82,6 +78,20 @@ function FixturesPage() {
         setClubsByShortName(Object.fromEntries(clubs.map((club) => [club.short_name.toUpperCase(), club])))
       })
       .catch(() => {})
+  }, [])
+
+  // Fetches both tabs' competition metadata up front (cached, so cheap) so
+  // both tab logos are ready before the user picks one, not just the active tab.
+  useEffect(() => {
+    COMPETITIONS.forEach(({ code }) => {
+      fetch(`/api/fixtures?competition=${code}`)
+        .then((res) => res.json())
+        .then((data) => {
+          const emblem = data.fixtures?.competition?.emblem ?? null
+          setCompetitionEmblems((prev) => ({ ...prev, [code]: emblem }))
+        })
+        .catch(() => {})
+    })
   }, [])
 
   useEffect(() => {
@@ -127,14 +137,15 @@ function FixturesPage() {
             <button
               key={tab.code}
               type="button"
+              title={tab.label}
               onClick={() => setCompetition(tab.code)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              className={`flex items-center justify-center rounded-full px-5 py-2 text-sm font-medium transition-colors ${
                 competition === tab.code
                   ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800'
               }`}
             >
-              {tab.label}
+              <CompetitionLogo name={tab.label} emblemUrl={competitionEmblems[tab.code]} size="md" />
             </button>
           ))}
         </div>

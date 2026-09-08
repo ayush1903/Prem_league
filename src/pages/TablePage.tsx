@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer } from '../lib/motion'
-import { getBadgeColor } from '../lib/clubColors'
 import { normalizeTla } from '../lib/tla'
+import ClubCrest from '../components/ClubCrest'
 
 type Club = {
   id: number
@@ -22,6 +22,7 @@ type StandingRow = {
   team: {
     name: string
     tla: string
+    crest: string | null
   }
 }
 
@@ -130,12 +131,7 @@ function TablePage() {
 
                   const nameCell = (
                     <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded font-bold text-white"
-                        style={{ backgroundColor: getBadgeColor(badgeLabel), fontSize: '0.65rem' }}
-                      >
-                        {badgeLabel}
-                      </div>
+                      <ClubCrest label={badgeLabel} crestUrl={row.team.crest} alt={displayName} known={Boolean(club)} size="xs" />
                       <span className="font-medium">{displayName}</span>
                     </div>
                   )

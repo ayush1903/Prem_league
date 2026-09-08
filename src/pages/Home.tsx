@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
-import { getBadgeColor } from '../lib/clubColors'
+import ClubCrest from '../components/ClubCrest'
 
 const MotionLink = motion.create(Link)
 
@@ -10,6 +10,7 @@ type Club = {
   id: number
   name: string
   short_name: string
+  crest: string | null
 }
 
 function Home() {
@@ -83,12 +84,7 @@ function Home() {
               {...cardHover}
               className="flex flex-col items-center gap-3 rounded-lg bg-gray-100 p-4 text-center transition-colors hover:bg-gray-200 dark:bg-gray-900 dark:hover:bg-gray-800"
             >
-              <div
-                className="flex h-14 w-14 items-center justify-center rounded-lg font-bold text-white"
-                style={{ backgroundColor: getBadgeColor(club.short_name) }}
-              >
-                {club.short_name}
-              </div>
+              <ClubCrest label={club.short_name} crestUrl={club.crest} alt={club.name} size="lg" />
               <p className="text-sm font-medium">{club.name}</p>
             </MotionLink>
           ))}

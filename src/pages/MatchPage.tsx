@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
-import { getBadgeColor } from '../lib/clubColors'
 import { normalizeTla } from '../lib/tla'
 import { POSITION_LABELS, isUnavailable, getStatusBadge, type Player } from '../lib/players'
+import ClubCrest from '../components/ClubCrest'
+import CompetitionLogo from '../components/CompetitionLogo'
 
 const MotionLink = motion.create(Link)
 
@@ -17,6 +18,7 @@ type Club = {
 type MatchTeam = {
   name: string
   tla: string
+  crest: string | null
 }
 
 type Match = {
@@ -24,6 +26,7 @@ type Match = {
   utcDate: string
   homeTeam: MatchTeam
   awayTeam: MatchTeam
+  competition?: { name: string; emblem: string | null }
 }
 
 type Competition = 'PL' | 'CL'
@@ -152,16 +155,22 @@ function keyPlayers(players: SquadPlayer[]): SquadPlayer[] {
     .slice(0, KEY_PLAYER_COUNT)
 }
 
-function ClubBadge({ name, shortName, size = 'md' }: { name: string; shortName: string; size?: 'md' | 'lg' }) {
-  const dimensions = size === 'lg' ? 'h-16 w-16 text-lg' : 'h-10 w-10 text-xs'
+function ClubBadge({
+  name,
+  shortName,
+  crestUrl,
+  known,
+  size = 'sm',
+}: {
+  name: string
+  shortName: string
+  crestUrl: string | null
+  known: boolean
+  size?: 'sm' | 'xl'
+}) {
   return (
     <div className="flex flex-col items-center gap-2 text-center">
-      <div
-        className={`flex ${dimensions} shrink-0 items-center justify-center rounded-lg font-bold text-white`}
-        style={{ backgroundColor: getBadgeColor(shortName) }}
-      >
-        {shortName}
-      </div>
+      <ClubCrest label={shortName} crestUrl={crestUrl} alt={name} known={known} size={size} />
       <p className="max-w-[10rem] text-sm font-medium">{name}</p>
     </div>
   )
@@ -257,6 +266,7 @@ function MatchPage() {
   const [status, setStatus] = useState<Status>('loading')
   const [match, setMatch] = useState<Match | null>(null)
   const [competitionLabel, setCompetitionLabel] = useState('')
+  const [competitionEmblem, setCompetitionEmblem] = useState<string | null>(null)
   const [homeClub, setHomeClub] = useState<Club | null>(null)
   const [awayClub, setAwayClub] = useState<Club | null>(null)
   const [headToHead, setHeadToHead] = useState<HeadToHeadResponse | null>(null)
@@ -273,6 +283,7 @@ function MatchPage() {
 
     setStatus('loading')
     setMatch(null)
+    setCompetitionEmblem(null)
     setHomeClub(null)
     setAwayClub(null)
     setHeadToHead(null)
@@ -304,6 +315,7 @@ function MatchPage() {
 
       setMatch(found.match)
       setCompetitionLabel(found.label)
+      setCompetitionEmblem(found.match.competition?.emblem ?? null)
       setStatus('ready')
 
       const home = clubsByShortName[normalizeTla(found.match.homeTeam.tla)] ?? null
@@ -359,13 +371,26 @@ function MatchPage() {
         </Link>
 
         <motion.header initial="hidden" animate="visible" variants={fadeSlideUp}>
-          <p className="text-center text-sm font-medium text-gray-600 dark:text-gray-400">
-            {competitionLabel} · {formatMatchDate(match.utcDate)}
+          <p className="flex items-center justify-center gap-1.5 text-center text-sm font-medium text-gray-600 dark:text-gray-400">
+            <CompetitionLogo name={competitionLabel} emblemUrl={competitionEmblem} size="sm" />
+            · {formatMatchDate(match.utcDate)}
           </p>
           <div className="mt-4 flex items-center justify-center gap-6 sm:gap-12">
-            <ClubBadge name={homeClub?.name ?? match.homeTeam.name} shortName={homeClub?.short_name ?? match.homeTeam.tla} size="lg" />
+            <ClubBadge
+              name={homeClub?.name ?? match.homeTeam.name}
+              shortName={homeClub?.short_name ?? match.homeTeam.tla}
+              crestUrl={match.homeTeam.crest}
+              known={Boolean(homeClub)}
+              size="xl"
+            />
             <span className="text-sm font-medium text-gray-500">vs</span>
-            <ClubBadge name={awayClub?.name ?? match.awayTeam.name} shortName={awayClub?.short_name ?? match.awayTeam.tla} size="lg" />
+            <ClubBadge
+              name={awayClub?.name ?? match.awayTeam.name}
+              shortName={awayClub?.short_name ?? match.awayTeam.tla}
+              crestUrl={match.awayTeam.crest}
+              known={Boolean(awayClub)}
+              size="xl"
+            />
           </div>
         </motion.header>
 

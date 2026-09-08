@@ -2,11 +2,19 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
-import { getBadgeColor } from '../lib/clubColors'
 import { normalizeTla } from '../lib/tla'
 import { POSITION_LABELS, isUnavailable, getStatusBadge, type Player } from '../lib/players'
+import ClubCrest from '../components/ClubCrest'
+import CompetitionLogo from '../components/CompetitionLogo'
 
 const MotionLink = motion.create(Link)
+
+type Club = {
+  id: number
+  name: string
+  short_name: string
+  crest: string | null
+}
 
 type TeamResponse = {
   team: string
@@ -38,6 +46,7 @@ type Transfer = {
 type MatchTeam = {
   name: string
   tla: string
+  crest: string | null
 }
 
 type Match = {
@@ -45,13 +54,17 @@ type Match = {
   utcDate: string
   homeTeam: MatchTeam
   awayTeam: MatchTeam
+  competition?: { name: string; emblem: string | null }
 }
 
 type NextMatch = {
   id: number
   utcDate: string
   competitionLabel: string
+  competitionEmblem: string | null
   opponentName: string
+  opponentShortName: string
+  opponentCrest: string | null
   isHome: boolean
 }
 
@@ -66,12 +79,35 @@ function extractClubMatches(matches: Match[], competitionLabel: string, shortNam
   return matches.flatMap((match): NextMatch[] => {
     const homeShortName = normalizeTla(match.homeTeam.tla)
     const awayShortName = normalizeTla(match.awayTeam.tla)
+    const competitionEmblem = match.competition?.emblem ?? null
 
     if (homeShortName === shortName) {
-      return [{ id: match.id, utcDate: match.utcDate, competitionLabel, opponentName: match.awayTeam.name, isHome: true }]
+      return [
+        {
+          id: match.id,
+          utcDate: match.utcDate,
+          competitionLabel,
+          competitionEmblem,
+          opponentName: match.awayTeam.name,
+          opponentShortName: normalizeTla(match.awayTeam.tla),
+          opponentCrest: match.awayTeam.crest,
+          isHome: true,
+        },
+      ]
     }
     if (awayShortName === shortName) {
-      return [{ id: match.id, utcDate: match.utcDate, competitionLabel, opponentName: match.homeTeam.name, isHome: false }]
+      return [
+        {
+          id: match.id,
+          utcDate: match.utcDate,
+          competitionLabel,
+          competitionEmblem,
+          opponentName: match.homeTeam.name,
+          opponentShortName: normalizeTla(match.homeTeam.tla),
+          opponentCrest: match.homeTeam.crest,
+          isHome: false,
+        },
+      ]
     }
     return []
   })
@@ -113,6 +149,7 @@ function ClubPage() {
   const [clubContent, setClubContent] = useState<ClubContent | null>(null)
   const [transfers, setTransfers] = useState<Transfer[]>([])
   const [nextMatch, setNextMatch] = useState<NextMatch | null>(null)
+  const [crest, setCrest] = useState<string | null>(null)
 
   useEffect(() => {
     if (!slug) {
@@ -125,10 +162,20 @@ function ClubPage() {
     setClubContent(null)
     setTransfers([])
     setNextMatch(null)
+    setCrest(null)
 
     const clubParam = `club=${encodeURIComponent(slug)}`
     const shortName = slug.toUpperCase()
     const previewParam = isPreview ? '&preview=1' : ''
+
+    fetch('/api/clubs')
+      .then((res) => res.json())
+      .then((data) => {
+        const clubs: Club[] = data.clubs ?? []
+        const club = clubs.find((c) => c.short_name.toUpperCase() === shortName)
+        setCrest(club?.crest ?? null)
+      })
+      .catch(() => {})
 
     fetch(`/api/team?${clubParam}`)
       .then((res) => {
@@ -222,12 +269,7 @@ function ClubPage() {
           variants={fadeSlideUp}
           className="flex items-center gap-4"
         >
-          <div
-            className="flex h-14 w-14 items-center justify-center rounded-lg font-bold text-white"
-            style={{ backgroundColor: getBadgeColor(badgeLabel) }}
-          >
-            {badgeLabel}
-          </div>
+          <ClubCrest label={badgeLabel} crestUrl={crest} alt={team.team} size="lg" />
           <div>
             <h1 className="text-3xl font-semibold">{team.team}</h1>
             {clubContent && (clubContent.manager || clubContent.formation) && (
@@ -249,14 +291,18 @@ function ClubPage() {
             {...cardHover}
             className="mt-6 flex items-center justify-between rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
           >
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Next match</p>
-              <p className="mt-1 font-medium">
-                {nextMatch.isHome ? 'vs' : '@'} {nextMatch.opponentName}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {nextMatch.competitionLabel} · {nextMatch.isHome ? 'Home' : 'Away'}
-              </p>
+            <div className="flex min-w-0 items-center gap-3">
+              <ClubCrest label={nextMatch.opponentShortName} crestUrl={nextMatch.opponentCrest} alt={nextMatch.opponentName} size="xs" />
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Next match</p>
+                <p className="mt-1 truncate font-medium">
+                  {nextMatch.isHome ? 'vs' : '@'} {nextMatch.opponentName}
+                </p>
+                <p className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+                  <CompetitionLogo name={nextMatch.competitionLabel} emblemUrl={nextMatch.competitionEmblem} size="sm" />
+                  · {nextMatch.isHome ? 'Home' : 'Away'}
+                </p>
+              </div>
             </div>
             <p className="shrink-0 text-right text-sm text-gray-600 dark:text-gray-400">
               {formatMatchDate(nextMatch.utcDate)}

@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
-import { getBadgeColor } from '../lib/clubColors'
+import ClubCrest from '../components/ClubCrest'
+
+type Club = {
+  id: number
+  name: string
+  short_name: string
+  crest: string | null
+}
 
 type Player = {
   id: number
@@ -55,6 +62,7 @@ function PlayerPage() {
   const [status, setStatus] = useState<Status>('loading')
   const [team, setTeam] = useState<TeamResponse | null>(null)
   const [player, setPlayer] = useState<Player | null>(null)
+  const [crest, setCrest] = useState<string | null>(null)
 
   useEffect(() => {
     if (!slug || !playerId) {
@@ -65,6 +73,16 @@ function PlayerPage() {
     setStatus('loading')
     setTeam(null)
     setPlayer(null)
+    setCrest(null)
+
+    fetch('/api/clubs')
+      .then((res) => res.json())
+      .then((data) => {
+        const clubs: Club[] = data.clubs ?? []
+        const club = clubs.find((c) => c.short_name.toUpperCase() === slug.toUpperCase())
+        setCrest(club?.crest ?? null)
+      })
+      .catch(() => {})
 
     fetch(`/api/team?club=${encodeURIComponent(slug)}`)
       .then((res) => {
@@ -133,12 +151,7 @@ function PlayerPage() {
           variants={fadeSlideUp}
           className="flex items-center gap-4"
         >
-          <div
-            className="flex h-14 w-14 items-center justify-center rounded-lg font-bold text-white"
-            style={{ backgroundColor: getBadgeColor(badgeLabel) }}
-          >
-            {badgeLabel}
-          </div>
+          <ClubCrest label={badgeLabel} crestUrl={crest} alt={team.team} size="lg" />
           <div>
             <h1 className="text-3xl font-semibold">
               {player.first_name} {player.second_name}

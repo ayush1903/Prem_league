@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
-import { getBadgeColor, getClubInitials } from '../lib/clubColors'
+import { getClubInitials } from '../lib/clubColors'
+import ClubCrest from '../components/ClubCrest'
+
+type Club = {
+  id: number
+  name: string
+  short_name: string
+  crest: string | null
+}
 
 type Transfer = {
   club_name: string
@@ -37,6 +45,7 @@ function formatDate(dateLogged: string): string {
 
 function TransfersPage() {
   const [transfers, setTransfers] = useState<Transfer[]>([])
+  const [crestByShortName, setCrestByShortName] = useState<Record<string, string | null>>({})
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -46,6 +55,14 @@ function TransfersPage() {
       .then((data) => setTransfers(data.transfers ?? []))
       .catch(() => setError('Failed to load transfers'))
       .finally(() => setLoading(false))
+
+    fetch('/api/clubs')
+      .then((res) => res.json())
+      .then((data) => {
+        const clubs: Club[] = data.clubs ?? []
+        setCrestByShortName(Object.fromEntries(clubs.map((club) => [club.short_name.toUpperCase(), club.crest])))
+      })
+      .catch(() => {})
   }, [])
 
   return (
@@ -90,6 +107,7 @@ function TransfersPage() {
         >
           {transfers.map((transfer, index) => {
             const initials = getClubInitials(transfer.club_name, transfer.short_name)
+            const crestUrl = transfer.short_name ? crestByShortName[transfer.short_name.toUpperCase()] ?? null : null
             const type = transfer.type ?? 'rumour'
 
             return (
@@ -99,12 +117,7 @@ function TransfersPage() {
                 {...cardHover}
                 className="flex items-center gap-4 rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
               >
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg font-bold text-white"
-                  style={{ backgroundColor: getBadgeColor(initials) }}
-                >
-                  {initials}
-                </div>
+                <ClubCrest label={initials} crestUrl={crestUrl} alt={transfer.club_name} size="md" />
 
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{transfer.player_name}</p>
