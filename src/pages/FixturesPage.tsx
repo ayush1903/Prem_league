@@ -5,6 +5,8 @@ import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
 import { getBadgeColor } from '../lib/clubColors'
 import { normalizeTla } from '../lib/tla'
 
+const MotionLink = motion.create(Link)
+
 type Club = {
   id: number
   name: string
@@ -163,11 +165,12 @@ function FixturesPage() {
             const awayClub = resolveClub(match.awayTeam.tla, clubsByShortName)
 
             return (
-              <motion.div
+              <MotionLink
                 key={match.id}
+                to={`/match/${match.id}`}
                 variants={fadeUp}
                 {...cardHover}
-                className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                className="block rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
               >
                 <p className="mb-3 text-xs text-gray-500">{formatMatchDate(match.utcDate)}</p>
                 <div className="flex items-center justify-between gap-3">
@@ -175,7 +178,7 @@ function FixturesPage() {
                   <span className="shrink-0 text-xs font-medium text-gray-500">vs</span>
                   <TeamBadge team={match.awayTeam} club={awayClub} />
                 </div>
-              </motion.div>
+              </MotionLink>
             )
           })}
         </motion.div>

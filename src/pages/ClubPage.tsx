@@ -4,18 +4,9 @@ import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
 import { getBadgeColor } from '../lib/clubColors'
 import { normalizeTla } from '../lib/tla'
+import { POSITION_LABELS, isUnavailable, getStatusBadge, type Player } from '../lib/players'
 
 const MotionLink = motion.create(Link)
-
-type Player = {
-  id: number
-  first_name: string
-  second_name: string
-  element_type: number
-  status: string
-  news: string
-  chance_of_playing_this_round: number | null
-}
 
 type TeamResponse = {
   team: string
@@ -96,57 +87,12 @@ function formatMatchDate(utcDate: string): string {
   })
 }
 
-const POSITION_LABELS: Record<number, string> = {
-  1: 'Goalkeeper',
-  2: 'Defender',
-  3: 'Midfielder',
-  4: 'Forward',
-}
-
 const POSITION_GROUPS: { type: number; heading: string }[] = [
   { type: 1, heading: 'Goalkeepers' },
   { type: 2, heading: 'Defenders' },
   { type: 3, heading: 'Midfielders' },
   { type: 4, heading: 'Forwards' },
 ]
-
-// FPL's news field describes a permanent departure or loan move in prose
-// (e.g. "Joined Fulham permanently", "Signed on loan for..."); those players
-// are no longer really part of the club, so they're dropped from the squad
-// list entirely rather than shown with a status badge.
-function isUnavailable(player: Player): boolean {
-  const news = player.news.toLowerCase()
-  return (
-    news.includes('permanently') ||
-    news.includes('loan') ||
-    news.includes('departed') ||
-    news.includes('returned to')
-  )
-}
-
-type StatusBadge = {
-  label: string
-  className: string
-}
-
-const BADGE_BASE_CLASSES = 'mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none'
-
-function getStatusBadge(player: Player): StatusBadge | null {
-  if (player.status === 'i') {
-    return { label: 'Injured', className: `${BADGE_BASE_CLASSES} bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400` }
-  }
-  if (player.status === 's') {
-    return { label: 'Suspended', className: `${BADGE_BASE_CLASSES} bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400` }
-  }
-  if (player.status === 'd') {
-    const chance = player.chance_of_playing_this_round
-    return {
-      label: chance !== null ? `${chance}% chance` : 'Doubtful',
-      className: `${BADGE_BASE_CLASSES} bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400`,
-    }
-  }
-  return null
-}
 
 const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === '1'
 
@@ -295,11 +241,12 @@ function ClubPage() {
         </motion.header>
 
         {nextMatch && (
-          <motion.div
+          <MotionLink
+            to={`/match/${nextMatch.id}`}
             initial="hidden"
             animate="visible"
             variants={fadeUp}
-            transition={{ duration: 0.25, ease: 'easeOut', delay: 0.05 }}
+            {...cardHover}
             className="mt-6 flex items-center justify-between rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
           >
             <div>
@@ -314,7 +261,7 @@ function ClubPage() {
             <p className="shrink-0 text-right text-sm text-gray-600 dark:text-gray-400">
               {formatMatchDate(nextMatch.utcDate)}
             </p>
-          </motion.div>
+          </MotionLink>
         )}
 
         {clubContent && (clubContent.club_summary || clubContent.playstyle_summary) && (
