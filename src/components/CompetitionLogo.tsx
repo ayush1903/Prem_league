@@ -26,7 +26,7 @@ function CompetitionLogo({ name, emblemUrl, size = 'sm', className = '' }: Props
         alt={name}
         title={name}
         onError={() => setFailed(true)}
-        className={`${SIZE_CLASSES[size]} shrink-0 object-contain ${className}`}
+        className={`${SIZE_CLASSES[size]} shrink-0 rounded-lg bg-white object-contain p-1 ${className}`}
       />
     )
   }
