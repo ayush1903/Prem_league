@@ -1,3 +1,25 @@
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: 'Barlow Condensed', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Club-color card accent: --club is set per-card via inline style. Plain CSS
+   because the hover tint/shadow color is per-club data, not a Tailwind token. */
+.club-card {
+  border-left: 4px solid var(--club, transparent);
+  transition: box-shadow 0.18s ease, background-color 0.18s ease;
+}
+.club-card:hover {
+  background-color: color-mix(in srgb, var(--club, transparent) 12%, #f3f4f6);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--club, transparent) 35%, transparent);
+}
+.dark .club-card:hover {
+  background-color: color-mix(in srgb, var(--club, transparent) 16%, #111827);
+}
+@media (prefers-reduced-motion: reduce) {
+  .club-card { transition: none; }
+}
