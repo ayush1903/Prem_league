@@ -3,6 +3,10 @@
 // is white (FUL, LEE use their crest's secondary color instead) or their
 // stripes read as black (NEW). Tuned for contrast against dark-mode card
 // backgrounds, not just color-accuracy, since NEW/FUL are both near-black.
+// Several clubs share a red brand color (ARS, BOU, BRE, LIV, MUN, NFO, SUN) —
+// values are nudged apart within that family (deeper/more magenta vs.
+// brighter/more orange) so alphabetically-adjacent reds (e.g. ARS, BOU, BRE
+// sit in the same grid row) stay visually distinguishable, not just accurate.
 export const CLUB_COLORS: Record<string, string> = {
   ARS: '#EF0107',
   MCI: '#6CABDD',
@@ -11,7 +15,7 @@ export const CLUB_COLORS: Record<string, string> = {
   NEW: '#000000',
   AVL: '#670E36',
   BOU: '#B91813',
-  BRE: '#E30613',
+  BRE: '#C8001E',
   BHA: '#0057B8',
   COV: '#78AEDB',
   CRY: '#1B458F',
