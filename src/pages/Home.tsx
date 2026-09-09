@@ -16,7 +16,7 @@ type Club = {
 
 function Home() {
   const [clubs, setClubs] = useState<Club[]>([])
-  const [emblem, setEmblem] = useState<string | null>(null)
+  const [emblem, setEmblem] = useState<string | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
