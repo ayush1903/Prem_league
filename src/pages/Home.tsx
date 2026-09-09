@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
+import { fadeUp, staggerContainer, cardHover } from '../lib/motion'
 import ClubCrest from '../components/ClubCrest'
-import CompetitionLogo from '../components/CompetitionLogo'
+import SiteHeader from '../components/SiteHeader'
 
 const MotionLink = motion.create(Link)
 
@@ -16,7 +16,6 @@ type Club = {
 
 function Home() {
   const [clubs, setClubs] = useState<Club[]>([])
-  const [emblem, setEmblem] = useState<string | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -24,54 +23,11 @@ function Home() {
       .then((res) => res.json())
       .then((data) => setClubs(data.clubs ?? []))
       .catch(() => setError('Failed to load clubs'))
-
-    fetch('/api/fixtures?competition=PL')
-      .then((res) => res.json())
-      .then((data) => setEmblem(data.fixtures?.competition?.emblem ?? null))
-      .catch(() => {})
   }, [])
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
-      <motion.header
-        initial="hidden"
-        animate="visible"
-        variants={fadeSlideUp}
-        style={{ backgroundColor: '#38003C' }}
-      >
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-8">
-          <h1 className="inline-block text-3xl font-bold text-white">
-            <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-              <CompetitionLogo name="Premier League" emblemUrl={emblem} size="md" />
-              Premier League
-            </Link>
-            <span
-              className="mt-2 block h-1 w-full rounded-full"
-              style={{ backgroundColor: '#00FF85' }}
-            />
-          </h1>
-          <div className="flex items-center gap-6">
-            <Link
-              to="/table"
-              className="text-sm font-medium text-white/80 transition-colors hover:text-white"
-            >
-              Table
-            </Link>
-            <Link
-              to="/fixtures"
-              className="text-sm font-medium text-white/80 transition-colors hover:text-white"
-            >
-              Fixtures
-            </Link>
-            <Link
-              to="/transfers"
-              className="text-sm font-medium text-white/80 transition-colors hover:text-white"
-            >
-              Transfers
-            </Link>
-          </div>
-        </div>
-      </motion.header>
+      <SiteHeader />
 
       <div className="mx-auto max-w-5xl px-6 py-10">
         {error && <p className="text-red-500">{error}</p>}

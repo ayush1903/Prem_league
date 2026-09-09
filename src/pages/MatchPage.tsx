@@ -6,6 +6,7 @@ import { normalizeTla } from '../lib/tla'
 import { POSITION_LABELS, isUnavailable, getStatusBadge, type Player } from '../lib/players'
 import ClubCrest from '../components/ClubCrest'
 import CompetitionLogo from '../components/CompetitionLogo'
+import SiteHeader from '../components/SiteHeader'
 
 const MotionLink = motion.create(Link)
 
@@ -362,6 +363,7 @@ function MatchPage() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+      <SiteHeader />
       <div className="mx-auto max-w-3xl px-6 py-10">
         <Link
           to="/fixtures"

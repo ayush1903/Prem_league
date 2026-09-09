@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
 import ClubCrest from '../components/ClubCrest'
+import SiteHeader from '../components/SiteHeader'
 
 type Club = {
   id: number
@@ -137,6 +138,7 @@ function PlayerPage() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+      <SiteHeader />
       <div className="mx-auto max-w-2xl px-6 py-10">
         <Link
           to={`/club/${slug}`}

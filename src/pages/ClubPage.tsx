@@ -6,6 +6,7 @@ import { normalizeTla } from '../lib/tla'
 import { POSITION_LABELS, isUnavailable, getStatusBadge, type Player } from '../lib/players'
 import ClubCrest from '../components/ClubCrest'
 import CompetitionLogo from '../components/CompetitionLogo'
+import SiteHeader from '../components/SiteHeader'
 
 const MotionLink = motion.create(Link)
 
@@ -256,6 +257,7 @@ function ClubPage() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+      <SiteHeader />
       <div className="mx-auto max-w-4xl px-6 py-10">
         {isPreview && (
           <div className="mb-6 rounded-lg border border-yellow-400 bg-yellow-100 px-4 py-2 text-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-950 dark:text-yellow-300">

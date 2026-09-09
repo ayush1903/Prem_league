@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { fadeSlideUp, fadeUp, staggerContainer } from '../lib/motion'
+import { fadeUp, staggerContainer } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
 import ClubCrest from '../components/ClubCrest'
+import SiteHeader from '../components/SiteHeader'
 
 type Club = {
   id: number
@@ -71,28 +72,7 @@ function TablePage() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
-      <motion.header
-        initial="hidden"
-        animate="visible"
-        variants={fadeSlideUp}
-        style={{ backgroundColor: '#38003C' }}
-      >
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-8">
-          <h1 className="inline-block text-3xl font-bold text-white">
-            Table
-            <span
-              className="mt-2 block h-1 w-full rounded-full"
-              style={{ backgroundColor: '#00FF85' }}
-            />
-          </h1>
-          <Link
-            to="/"
-            className="text-sm font-medium text-white/80 transition-colors hover:text-white"
-          >
-            ← Premier League
-          </Link>
-        </div>
-      </motion.header>
+      <SiteHeader />
 
       <div className="mx-auto max-w-3xl px-6 py-10">
         {error && <p className="text-red-500">{error}</p>}
