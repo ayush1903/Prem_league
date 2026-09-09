@@ -252,7 +252,9 @@ function ClubPage() {
   }, {})
 
   const squadSize = players.length
+  const goalkeeperCount = (playersByType[1] ?? []).length
   const defenderCount = (playersByType[2] ?? []).length
+  const midfielderCount = (playersByType[3] ?? []).length
   const forwardCount = (playersByType[4] ?? []).length
 
   return (
@@ -363,15 +365,23 @@ function ClubPage() {
           initial="hidden"
           animate="visible"
           variants={staggerContainer(0.06, 0.25)}
-          className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4"
+          className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
         >
           <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
             <p className="text-sm text-gray-600 dark:text-gray-400">Squad Size</p>
             <p className="text-2xl font-bold">{squadSize}</p>
           </motion.div>
           <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Goalkeepers</p>
+            <p className="text-2xl font-bold">{goalkeeperCount}</p>
+          </motion.div>
+          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
             <p className="text-sm text-gray-600 dark:text-gray-400">Defenders</p>
             <p className="text-2xl font-bold">{defenderCount}</p>
+          </motion.div>
+          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Midfielders</p>
+            <p className="text-2xl font-bold">{midfielderCount}</p>
           </motion.div>
           <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
             <p className="text-sm text-gray-600 dark:text-gray-400">Forwards</p>
