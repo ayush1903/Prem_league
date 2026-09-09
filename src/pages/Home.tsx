@@ -41,10 +41,10 @@ function Home() {
       >
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-8">
           <h1 className="inline-block text-3xl font-bold text-white">
-            <span className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
               <CompetitionLogo name="Premier League" emblemUrl={emblem} size="md" />
               Premier League
-            </span>
+            </Link>
             <span
               className="mt-2 block h-1 w-full rounded-full"
               style={{ backgroundColor: '#00FF85' }}
