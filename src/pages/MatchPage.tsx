@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
+import { fadeUp, staggerContainer, clubCardHover } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
+import { getBadgeColor } from '../lib/clubColors'
+import { formatKickoffTime, formatKickoffDate } from '../lib/dates'
 import { POSITION_LABELS, isUnavailable, getStatusBadge, type Player } from '../lib/players'
-import ClubCrest from '../components/ClubCrest'
 import CompetitionLogo from '../components/CompetitionLogo'
+import MatchHero from '../components/MatchHero'
 import SiteHeader from '../components/SiteHeader'
 
 const MotionLink = motion.create(Link)
@@ -134,16 +136,6 @@ type Status = 'loading' | 'ready' | 'not-found' | 'error'
 const KEY_PLAYER_COUNT = 5
 const RECENT_MEETINGS_COUNT = 5
 
-function formatMatchDate(utcDate: string): string {
-  return new Date(utcDate).toLocaleString(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
-
 function formatMeetingDate(utcDate: string): string {
   return new Date(utcDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
@@ -156,36 +148,20 @@ function keyPlayers(players: SquadPlayer[]): SquadPlayer[] {
     .slice(0, KEY_PLAYER_COUNT)
 }
 
-function ClubBadge({
-  name,
-  shortName,
-  crestUrl,
-  known,
-  size = 'sm',
-}: {
-  name: string
-  shortName: string
-  crestUrl: string | null
-  known: boolean
-  size?: 'sm' | 'xl'
-}) {
+function FormCard({ label, form, color }: { label: string; form: FormEntry | null; color: string }) {
   return (
-    <div className="flex flex-col items-center gap-2 text-center">
-      <ClubCrest label={shortName} crestUrl={crestUrl} alt={name} known={known} size={size} />
-      <p className="max-w-[10rem] text-sm font-medium">{name}</p>
-    </div>
-  )
-}
-
-function FormCard({ label, form }: { label: string; form: FormEntry | null }) {
-  return (
-    <motion.div variants={fadeUp} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+    <motion.div
+      variants={fadeUp}
+      {...clubCardHover(color)}
+      className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+      style={{ borderLeft: `3px solid ${color}` }}
+    >
       <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
       {form ? (
         <>
-          <p className="mt-1 text-lg font-semibold">
+          <p className="mt-1 font-display text-2xl font-extrabold">
             {form.position}
-            <span className="text-sm font-normal text-gray-600 dark:text-gray-400"> · {form.points} pts</span>
+            <span className="font-body text-sm font-normal text-gray-600 dark:text-gray-400"> · {form.points} pts</span>
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {form.won}W {form.draw}D {form.lost}L · GD {form.goalDifference > 0 ? '+' : ''}
@@ -199,7 +175,7 @@ function FormCard({ label, form }: { label: string; form: FormEntry | null }) {
   )
 }
 
-function KeyPlayersColumn({ club, players }: { club: Club | null; players: SquadPlayer[] }) {
+function KeyPlayersColumn({ club, players, color }: { club: Club | null; players: SquadPlayer[]; color: string }) {
   if (!club) {
     return (
       <div>
@@ -232,8 +208,9 @@ function KeyPlayersColumn({ club, players }: { club: Club | null; players: Squad
             key={player.id}
             to={`/club/${club.short_name.toLowerCase()}/player/${player.id}`}
             variants={fadeUp}
-            {...cardHover}
+            {...clubCardHover(color)}
             className="block rounded-lg bg-gray-100 p-3 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${color}` }}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -254,7 +231,7 @@ function KeyPlayersColumn({ club, players }: { club: Club | null; players: Squad
 
 function MatchNotFoundPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+    <div className="flex min-h-screen items-center justify-center bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
       <p className="text-gray-600 dark:text-gray-400">
         Match not found — it may no longer be an upcoming fixture.
       </p>
@@ -351,7 +328,7 @@ function MatchPage() {
 
   if (status === 'loading' || !match) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+      <div className="flex min-h-screen items-center justify-center bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
         <p>Loading match...</p>
       </div>
     )
@@ -360,9 +337,11 @@ function MatchPage() {
   const allMeetings = headToHead?.headToHead.matches ?? []
   const h2hSummary = allMeetings.length > 0 ? summarizeH2H(allMeetings, match.homeTeam.tla, match.awayTeam.tla) : null
   const recentMeetings = allMeetings.slice(0, RECENT_MEETINGS_COUNT)
+  const homeColor = getBadgeColor(homeClub?.short_name ?? match.homeTeam.tla)
+  const awayColor = getBadgeColor(awayClub?.short_name ?? match.awayTeam.tla)
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+    <div className="min-h-screen bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
       <SiteHeader />
       <div className="mx-auto max-w-3xl px-6 py-10">
         <Link
@@ -372,29 +351,30 @@ function MatchPage() {
           ← Fixtures
         </Link>
 
-        <motion.header initial="hidden" animate="visible" variants={fadeSlideUp}>
-          <p className="flex items-center justify-center gap-1.5 text-center text-sm font-medium text-gray-600 dark:text-gray-400">
-            <CompetitionLogo name={competitionLabel} emblemUrl={competitionEmblem} size="sm" />
-            · {formatMatchDate(match.utcDate)}
-          </p>
-          <div className="mt-4 flex items-center justify-center gap-6 sm:gap-12">
-            <ClubBadge
-              name={homeClub?.name ?? match.homeTeam.name}
-              shortName={homeClub?.short_name ?? match.homeTeam.tla}
-              crestUrl={match.homeTeam.crest}
-              known={Boolean(homeClub)}
-              size="xl"
-            />
-            <span className="text-sm font-medium text-gray-500">vs</span>
-            <ClubBadge
-              name={awayClub?.name ?? match.awayTeam.name}
-              shortName={awayClub?.short_name ?? match.awayTeam.tla}
-              crestUrl={match.awayTeam.crest}
-              known={Boolean(awayClub)}
-              size="xl"
-            />
-          </div>
-        </motion.header>
+        <MatchHero
+          eyebrow={
+            <>
+              <CompetitionLogo name={competitionLabel} emblemUrl={competitionEmblem} size="sm" />
+              {competitionLabel}
+            </>
+          }
+          time={formatKickoffTime(match.utcDate)}
+          date={formatKickoffDate(match.utcDate)}
+          home={{
+            label: homeClub?.short_name ?? match.homeTeam.tla,
+            name: homeClub?.name ?? match.homeTeam.name,
+            crestUrl: match.homeTeam.crest,
+            known: Boolean(homeClub),
+            color: homeColor,
+          }}
+          away={{
+            label: awayClub?.short_name ?? match.awayTeam.tla,
+            name: awayClub?.name ?? match.awayTeam.name,
+            crestUrl: match.awayTeam.crest,
+            known: Boolean(awayClub),
+            color: awayColor,
+          }}
+        />
 
         <motion.section
           initial="hidden"
@@ -412,17 +392,21 @@ function MatchPage() {
               </p>
               <div className="mt-2 grid grid-cols-3 gap-2 text-center">
                 <div>
-                  <p className="text-2xl font-bold">{h2hSummary.home.wins}</p>
+                  <p className="font-display text-2xl font-extrabold" style={{ color: homeColor }}>
+                    {h2hSummary.home.wins}
+                  </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     {homeClub?.name ?? match.homeTeam.name} wins
                   </p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{h2hSummary.home.draws}</p>
+                  <p className="font-display text-2xl font-extrabold">{h2hSummary.home.draws}</p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">Draws</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{h2hSummary.away.wins}</p>
+                  <p className="font-display text-2xl font-extrabold" style={{ color: awayColor }}>
+                    {h2hSummary.away.wins}
+                  </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     {awayClub?.name ?? match.awayTeam.name} wins
                   </p>
@@ -462,8 +446,8 @@ function MatchPage() {
         >
           <h2 className="mb-3 text-xl font-semibold">Season form</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <FormCard label={homeClub?.name ?? match.homeTeam.name} form={headToHead?.form.home ?? null} />
-            <FormCard label={awayClub?.name ?? match.awayTeam.name} form={headToHead?.form.away ?? null} />
+            <FormCard label={homeClub?.name ?? match.homeTeam.name} form={headToHead?.form.home ?? null} color={homeColor} />
+            <FormCard label={awayClub?.name ?? match.awayTeam.name} form={headToHead?.form.away ?? null} color={awayColor} />
           </div>
         </motion.section>
 
@@ -474,13 +458,13 @@ function MatchPage() {
               <p className="mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">
                 {homeClub?.name ?? match.homeTeam.name}
               </p>
-              <KeyPlayersColumn club={homeClub} players={homeSquad} />
+              <KeyPlayersColumn club={homeClub} players={homeSquad} color={homeColor} />
             </div>
             <div>
               <p className="mb-2 text-sm font-medium text-gray-600 dark:text-gray-400">
                 {awayClub?.name ?? match.awayTeam.name}
               </p>
-              <KeyPlayersColumn club={awayClub} players={awaySquad} />
+              <KeyPlayersColumn club={awayClub} players={awaySquad} color={awayColor} />
             </div>
           </div>
         </section>

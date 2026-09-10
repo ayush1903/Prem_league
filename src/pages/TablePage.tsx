@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
+import { getBadgeColor } from '../lib/clubColors'
 import ClubCrest from '../components/ClubCrest'
 import SiteHeader from '../components/SiteHeader'
 
@@ -71,7 +72,7 @@ function TablePage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+    <div className="min-h-screen bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
       <SiteHeader />
 
       <div className="mx-auto max-w-3xl px-6 py-10">
@@ -108,6 +109,7 @@ function TablePage() {
                   const club = resolveClub(row.team.tla, clubsByShortName)
                   const badgeLabel = club?.short_name ?? row.team.tla
                   const displayName = club?.name ?? row.team.name
+                  const rowColor = club ? getBadgeColor(club.short_name) : 'transparent'
 
                   const nameCell = (
                     <div className="flex items-center gap-3">
@@ -122,7 +124,9 @@ function TablePage() {
                       variants={fadeUp}
                       className="border-b border-gray-200 last:border-0 dark:border-gray-800"
                     >
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{row.position}</td>
+                      <td className="py-3 pl-4 pr-4 text-gray-600 dark:text-gray-400" style={{ borderLeft: `3px solid ${rowColor}` }}>
+                        {row.position}
+                      </td>
                       <td className="px-4 py-3">
                         {club ? (
                           <Link

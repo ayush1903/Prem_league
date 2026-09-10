@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { fadeUp, staggerContainer, cardHover } from '../lib/motion'
-import { getClubInitials } from '../lib/clubColors'
+import { fadeUp, staggerContainer, clubCardHover } from '../lib/motion'
+import { getClubInitials, getBadgeColor } from '../lib/clubColors'
 import ClubCrest from '../components/ClubCrest'
 import SiteHeader from '../components/SiteHeader'
 
@@ -66,7 +66,7 @@ function TransfersPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+    <div className="min-h-screen bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
       <SiteHeader />
 
       <div className="mx-auto max-w-3xl px-6 py-10">
@@ -88,13 +88,15 @@ function TransfersPage() {
             const initials = getClubInitials(transfer.club_name, transfer.short_name)
             const crestUrl = transfer.short_name ? crestByShortName[transfer.short_name.toUpperCase()] ?? null : null
             const type = transfer.type ?? 'rumour'
+            const clubColor = getBadgeColor(transfer.short_name ?? initials)
 
             return (
               <motion.div
                 key={`${transfer.club_name}-${transfer.player_name}-${index}`}
                 variants={fadeUp}
-                {...cardHover}
+                {...clubCardHover(clubColor)}
                 className="flex items-center gap-4 rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                style={{ borderLeft: `4px solid ${clubColor}` }}
               >
                 <ClubCrest label={initials} crestUrl={crestUrl} alt={transfer.club_name} size="md" />
 

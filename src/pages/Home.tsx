@@ -1,10 +1,12 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { fadeUp, fadeSlideUp, staggerContainer } from '../lib/motion'
+import { fadeUp, staggerContainer } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
 import { getBadgeColor } from '../lib/clubColors'
+import { formatKickoffTime, formatKickoffDate } from '../lib/dates'
 import ClubCrest from '../components/ClubCrest'
+import MatchHero from '../components/MatchHero'
 import SiteHeader from '../components/SiteHeader'
 
 const MotionLink = motion.create(Link)
@@ -29,83 +31,31 @@ type Match = {
   awayTeam: MatchTeam
 }
 
-function formatKickoffTime(utcDate: string): string {
-  return new Date(utcDate).toLocaleTimeString(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-}
-
-function formatKickoffDate(utcDate: string): string {
-  return new Date(utcDate).toLocaleDateString(undefined, {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
-}
-
 function NextMatchHero({ match, clubsByShortName }: { match: Match; clubsByShortName: Record<string, Club> }) {
   const homeClub = clubsByShortName[normalizeTla(match.homeTeam.tla)] ?? null
   const awayClub = clubsByShortName[normalizeTla(match.awayTeam.tla)] ?? null
-  const homeColor = getBadgeColor(homeClub?.short_name ?? match.homeTeam.tla)
-  const awayColor = getBadgeColor(awayClub?.short_name ?? match.awayTeam.tla)
 
   return (
-    <MotionLink
-      to={`/match/${match.id}`}
-      initial="hidden"
-      animate="visible"
-      variants={fadeSlideUp}
-      className="relative block overflow-hidden rounded-xl transition-opacity hover:opacity-95"
-      style={{ backgroundColor: '#0d0b10' }}
-    >
-      <div
-        aria-hidden="true"
-        className="absolute -left-10 top-[-20%] h-[140%] w-[45%] opacity-30 blur-3xl"
-        style={{ backgroundColor: homeColor }}
+    <MotionLink to={`/match/${match.id}`} className="block transition-opacity hover:opacity-95">
+      <MatchHero
+        eyebrow="Next match"
+        time={formatKickoffTime(match.utcDate)}
+        date={formatKickoffDate(match.utcDate)}
+        home={{
+          label: homeClub?.short_name ?? match.homeTeam.tla,
+          name: homeClub?.name ?? match.homeTeam.name,
+          crestUrl: homeClub?.crest ?? match.homeTeam.crest,
+          known: Boolean(homeClub),
+          color: getBadgeColor(homeClub?.short_name ?? match.homeTeam.tla),
+        }}
+        away={{
+          label: awayClub?.short_name ?? match.awayTeam.tla,
+          name: awayClub?.name ?? match.awayTeam.name,
+          crestUrl: awayClub?.crest ?? match.awayTeam.crest,
+          known: Boolean(awayClub),
+          color: getBadgeColor(awayClub?.short_name ?? match.awayTeam.tla),
+        }}
       />
-      <div
-        aria-hidden="true"
-        className="absolute -right-10 top-[-20%] h-[140%] w-[45%] opacity-30 blur-3xl"
-        style={{ backgroundColor: awayColor }}
-      />
-
-      <div className="relative px-6 py-7 sm:px-8 sm:py-8">
-        <p className="mb-5 text-xs font-medium text-white/50">Next match</p>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
-          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-            <ClubCrest
-              label={homeClub?.short_name ?? match.homeTeam.tla}
-              crestUrl={homeClub?.crest ?? match.homeTeam.crest}
-              alt={homeClub?.name ?? match.homeTeam.name}
-              known={Boolean(homeClub)}
-              size="xl"
-            />
-            <p className="truncate font-body text-base font-semibold text-white sm:text-lg">
-              {homeClub?.name ?? match.homeTeam.name}
-            </p>
-          </div>
-
-          <div className="text-center text-white">
-            <p className="font-display text-4xl font-extrabold leading-none sm:text-5xl">{formatKickoffTime(match.utcDate)}</p>
-            <p className="mt-2 text-xs text-white/50">{formatKickoffDate(match.utcDate)}</p>
-          </div>
-
-          <div className="flex min-w-0 flex-row-reverse items-center gap-3 text-right sm:gap-4">
-            <ClubCrest
-              label={awayClub?.short_name ?? match.awayTeam.tla}
-              crestUrl={awayClub?.crest ?? match.awayTeam.crest}
-              alt={awayClub?.name ?? match.awayTeam.name}
-              known={Boolean(awayClub)}
-              size="xl"
-            />
-            <p className="truncate font-body text-base font-semibold text-white sm:text-lg">
-              {awayClub?.name ?? match.awayTeam.name}
-            </p>
-          </div>
-        </div>
-      </div>
     </MotionLink>
   )
 }

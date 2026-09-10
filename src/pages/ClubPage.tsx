@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
+import { fadeUp, staggerContainer, clubCardHover } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
+import { getBadgeColor } from '../lib/clubColors'
 import { POSITION_LABELS, isUnavailable, getStatusBadge, type Player } from '../lib/players'
 import ClubCrest from '../components/ClubCrest'
+import ClubHero from '../components/ClubHero'
 import CompetitionLogo from '../components/CompetitionLogo'
+import SectionHeading from '../components/SectionHeading'
 import SiteHeader from '../components/SiteHeader'
 
 const MotionLink = motion.create(Link)
@@ -135,7 +138,7 @@ const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.lo
 
 function ClubNotFoundPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+    <div className="flex min-h-screen items-center justify-center bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
       <p className="text-gray-600 dark:text-gray-400">
         Club not found — this doesn't match a current Premier League club.
       </p>
@@ -229,7 +232,7 @@ function ClubPage() {
 
   if (status === 'error') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+      <div className="flex min-h-screen items-center justify-center bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
         <p className="text-red-500">Failed to load team data</p>
       </div>
     )
@@ -237,13 +240,14 @@ function ClubPage() {
 
   if (status === 'loading' || !team) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+      <div className="flex min-h-screen items-center justify-center bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
         <p>Loading squad — first visit for this club can take a moment...</p>
       </div>
     )
   }
 
   const badgeLabel = (slug ?? '').toUpperCase()
+  const clubColor = getBadgeColor(badgeLabel)
   const players = (team.players ?? []).filter((player) => !isUnavailable(player))
   const playersByType = players.reduce<Record<number, Player[]>>((acc, player) => {
     acc[player.element_type] = acc[player.element_type] ?? []
@@ -258,7 +262,7 @@ function ClubPage() {
   const forwardCount = (playersByType[4] ?? []).length
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+    <div className="min-h-screen bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
       <SiteHeader />
       <div className="mx-auto max-w-4xl px-6 py-10">
         {isPreview && (
@@ -267,24 +271,18 @@ function ClubPage() {
           </div>
         )}
 
-        <motion.header
-          initial="hidden"
-          animate="visible"
-          variants={fadeSlideUp}
-          className="flex items-center gap-4"
-        >
-          <ClubCrest label={badgeLabel} crestUrl={crest} alt={team.team} size="lg" />
-          <div>
-            <h1 className="text-3xl font-semibold">{team.team}</h1>
-            {clubContent && (clubContent.manager || clubContent.formation) && (
-              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                {clubContent.manager}
-                {clubContent.manager && clubContent.formation ? ' · ' : ''}
-                {clubContent.formation}
-              </p>
-            )}
-          </div>
-        </motion.header>
+        <ClubHero
+          color={clubColor}
+          label={badgeLabel}
+          crestUrl={crest}
+          alt={team.team}
+          title={team.team}
+          subtitle={
+            clubContent && (clubContent.manager || clubContent.formation)
+              ? [clubContent.manager, clubContent.formation].filter(Boolean).join(' · ')
+              : undefined
+          }
+        />
 
         {nextMatch && (
           <MotionLink
@@ -292,8 +290,9 @@ function ClubPage() {
             initial="hidden"
             animate="visible"
             variants={fadeUp}
-            {...cardHover}
+            {...clubCardHover(clubColor)}
             className="mt-6 flex items-center justify-between rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
           >
             <div className="flex min-w-0 items-center gap-3">
               <ClubCrest label={nextMatch.opponentShortName} crestUrl={nextMatch.opponentCrest} alt={nextMatch.opponentName} size="xs" />
@@ -333,7 +332,7 @@ function ClubPage() {
 
         {transfers.length > 0 && (
           <section className="mt-8">
-            <h2 className="mb-3 text-xl font-semibold">Transfers</h2>
+            <SectionHeading color={clubColor}>Transfers</SectionHeading>
             <motion.div
               initial="hidden"
               animate="visible"
@@ -344,8 +343,9 @@ function ClubPage() {
                 <motion.div
                   key={`${transfer.player_name}-${index}`}
                   variants={fadeUp}
-                  {...cardHover}
+                  {...clubCardHover(clubColor)}
                   className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                  style={{ borderLeft: `3px solid ${clubColor}` }}
                 >
                   <p className="font-medium">{transfer.player_name}</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -367,27 +367,57 @@ function ClubPage() {
           variants={staggerContainer(0.06, 0.25)}
           className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
         >
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Squad Size</p>
-            <p className="text-2xl font-bold">{squadSize}</p>
+            <p className="font-display text-2xl font-extrabold">{squadSize}</p>
           </motion.div>
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Goalkeepers</p>
-            <p className="text-2xl font-bold">{goalkeeperCount}</p>
+            <p className="font-display text-2xl font-extrabold">{goalkeeperCount}</p>
           </motion.div>
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Defenders</p>
-            <p className="text-2xl font-bold">{defenderCount}</p>
+            <p className="font-display text-2xl font-extrabold">{defenderCount}</p>
           </motion.div>
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Midfielders</p>
-            <p className="text-2xl font-bold">{midfielderCount}</p>
+            <p className="font-display text-2xl font-extrabold">{midfielderCount}</p>
           </motion.div>
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Forwards</p>
-            <p className="text-2xl font-bold">{forwardCount}</p>
+            <p className="font-display text-2xl font-extrabold">{forwardCount}</p>
           </motion.div>
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Spend</p>
             <p className="text-lg font-bold">Net: {clubContent?.net_spend ?? '—'}</p>
             {clubContent?.gross_spend && (
@@ -403,7 +433,7 @@ function ClubPage() {
 
             return (
               <section key={group.type}>
-                <h2 className="mb-3 text-xl font-semibold">{group.heading}</h2>
+                <SectionHeading color={clubColor}>{group.heading}</SectionHeading>
                 <motion.div
                   initial="hidden"
                   animate="visible"
@@ -418,8 +448,9 @@ function ClubPage() {
                         key={`${player.first_name}-${player.second_name}-${index}`}
                         to={`/club/${slug}/player/${player.id}`}
                         variants={fadeUp}
-                        {...cardHover}
+                        {...clubCardHover(clubColor)}
                         className="block rounded-lg bg-gray-100 p-3 dark:bg-gray-900"
+                        style={{ borderLeft: `3px solid ${clubColor}` }}
                       >
                         <p className="font-medium">
                           {player.first_name} {player.second_name}

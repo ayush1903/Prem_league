@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { fadeSlideUp, fadeUp, staggerContainer, cardHover } from '../lib/motion'
-import ClubCrest from '../components/ClubCrest'
+import { fadeUp, staggerContainer, clubCardHover } from '../lib/motion'
+import { getBadgeColor } from '../lib/clubColors'
+import ClubHero from '../components/ClubHero'
+import SectionHeading from '../components/SectionHeading'
 import SiteHeader from '../components/SiteHeader'
 
 type Club = {
@@ -52,7 +54,7 @@ const AVAILABILITY_LABELS: Record<string, string> = {
 
 function PlayerNotFoundPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+    <div className="flex min-h-screen items-center justify-center bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
       <p className="text-gray-600 dark:text-gray-400">Player not found for this club.</p>
     </div>
   )
@@ -119,7 +121,7 @@ function PlayerPage() {
 
   if (status === 'error') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+      <div className="flex min-h-screen items-center justify-center bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
         <p className="text-red-500">Failed to load player data</p>
       </div>
     )
@@ -127,17 +129,18 @@ function PlayerPage() {
 
   if (status === 'loading' || !team || !player) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+      <div className="flex min-h-screen items-center justify-center bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
         <p>Loading player...</p>
       </div>
     )
   }
 
   const badgeLabel = (slug ?? '').toUpperCase()
+  const clubColor = getBadgeColor(badgeLabel)
   const price = `£${(player.now_cost / 10).toFixed(1)}m`
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+    <div className="min-h-screen bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
       <SiteHeader />
       <div className="mx-auto max-w-2xl px-6 py-10">
         <Link
@@ -147,22 +150,14 @@ function PlayerPage() {
           ← {team.team}
         </Link>
 
-        <motion.header
-          initial="hidden"
-          animate="visible"
-          variants={fadeSlideUp}
-          className="flex items-center gap-4"
-        >
-          <ClubCrest label={badgeLabel} crestUrl={crest} alt={team.team} size="lg" />
-          <div>
-            <h1 className="text-3xl font-semibold">
-              {player.first_name} {player.second_name}
-            </h1>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              {POSITION_LABELS[player.element_type]} · {team.team}
-            </p>
-          </div>
-        </motion.header>
+        <ClubHero
+          color={clubColor}
+          label={badgeLabel}
+          crestUrl={crest}
+          alt={team.team}
+          title={`${player.first_name} ${player.second_name}`}
+          subtitle={`${POSITION_LABELS[player.element_type]} · ${team.team}`}
+        />
 
         {player.status !== 'a' && player.news && (
           <motion.div
@@ -184,39 +179,77 @@ function PlayerPage() {
           </motion.div>
         )}
 
+        <div className="mt-8">
+          <SectionHeading color={clubColor}>Season stats</SectionHeading>
+        </div>
         <motion.div
           initial="hidden"
           animate="visible"
           variants={staggerContainer(0.06, 0.2)}
-          className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3"
+          className="grid grid-cols-2 gap-4 sm:grid-cols-3"
         >
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Goals</p>
-            <p className="text-2xl font-bold">{player.goals_scored}</p>
+            <p className="font-display text-2xl font-extrabold">{player.goals_scored}</p>
           </motion.div>
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Assists</p>
-            <p className="text-2xl font-bold">{player.assists}</p>
+            <p className="font-display text-2xl font-extrabold">{player.assists}</p>
           </motion.div>
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Minutes Played</p>
-            <p className="text-2xl font-bold">{player.minutes}</p>
+            <p className="font-display text-2xl font-extrabold">{player.minutes}</p>
           </motion.div>
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Total Points</p>
-            <p className="text-2xl font-bold">{player.total_points}</p>
+            <p className="font-display text-2xl font-extrabold">{player.total_points}</p>
           </motion.div>
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Price</p>
-            <p className="text-2xl font-bold">{price}</p>
+            <p className="font-display text-2xl font-extrabold">{price}</p>
           </motion.div>
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Form</p>
-            <p className="text-2xl font-bold">{player.form}</p>
+            <p className="font-display text-2xl font-extrabold">{player.form}</p>
           </motion.div>
-          <motion.div variants={fadeUp} {...cardHover} className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
+          <motion.div
+            variants={fadeUp}
+            {...clubCardHover(clubColor)}
+            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+            style={{ borderLeft: `3px solid ${clubColor}` }}
+          >
             <p className="text-sm text-gray-600 dark:text-gray-400">Ownership</p>
-            <p className="text-2xl font-bold">{player.selected_by_percent}%</p>
+            <p className="font-display text-2xl font-extrabold">{player.selected_by_percent}%</p>
           </motion.div>
         </motion.div>
       </div>

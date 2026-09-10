@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer, cardHover } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
+import { getBadgeColor } from '../lib/clubColors'
 import ClubCrest from '../components/ClubCrest'
 import CompetitionLogo from '../components/CompetitionLogo'
 import SiteHeader from '../components/SiteHeader'
@@ -108,7 +109,7 @@ function FixturesPage() {
   }, [competition])
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-white">
+    <div className="min-h-screen bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
       <SiteHeader />
 
       <div className="mx-auto max-w-3xl px-6 py-10">
@@ -154,6 +155,8 @@ function FixturesPage() {
           {matches.map((match) => {
             const homeClub = resolveClub(match.homeTeam.tla, clubsByShortName)
             const awayClub = resolveClub(match.awayTeam.tla, clubsByShortName)
+            const homeColor = getBadgeColor(homeClub?.short_name ?? match.homeTeam.tla)
+            const awayColor = getBadgeColor(awayClub?.short_name ?? match.awayTeam.tla)
 
             return (
               <MotionLink
@@ -162,6 +165,7 @@ function FixturesPage() {
                 variants={fadeUp}
                 {...cardHover}
                 className="block rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                style={{ borderTop: '3px solid transparent', borderImage: `linear-gradient(90deg, ${homeColor}, ${awayColor}) 1` }}
               >
                 <p className="mb-3 text-xs text-gray-500">{formatMatchDate(match.utcDate)}</p>
                 <div className="flex items-center justify-between gap-3">
