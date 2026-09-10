@@ -7,23 +7,13 @@ import ClubCrest from '../components/ClubCrest'
 import SiteHeader from '../components/SiteHeader'
 
 // Simplified standard convention: top 4 = Champions League, 5th-6th =
-// Europa League, 7th = Conference League, bottom 3 = relegation. Bottom-3
-// is computed relative to the table's actual size (not hardcoded to 20)
-// so this still degrades sensibly if standings data is incomplete.
+// Europa League, 7th = Conference League, bottom 3 = relegation.
 const QUALIFICATION_ZONES = [
   { id: 'ucl', label: 'Champions League', color: '#2563eb' },
   { id: 'uel', label: 'Europa League', color: '#f97316' },
   { id: 'ecl', label: 'Conference League', color: '#16a34a' },
   { id: 'rel', label: 'Relegation', color: '#dc2626' },
 ] as const
-
-function getZoneColor(position: number, totalRows: number): string {
-  if (position <= 4) return QUALIFICATION_ZONES[0].color
-  if (position <= 6) return QUALIFICATION_ZONES[1].color
-  if (position === 7) return QUALIFICATION_ZONES[2].color
-  if (position > totalRows - 3) return QUALIFICATION_ZONES[3].color
-  return 'transparent'
-}
 
 type Club = {
   id: number
@@ -53,6 +43,35 @@ type StandingsGroup = {
 
 type StandingsPayload = {
   standings: StandingsGroup[]
+}
+
+// Zone boundaries are in terms of true table slots (1st, 2nd, ...), but
+// `position` is a competition-style rank that's shared by tied teams and
+// then skips ahead (two teams tied at 17 are both `position: 17`, and the
+// next team is `position: 19`). Checking `position` against a slot
+// boundary directly under- or over-counts ties straddling that boundary —
+// e.g. two teams tied at 17th (occupying slots 17-18 of 20) would both
+// read as "not > 17" and miss the relegation zone entirely, even though
+// slot 18 is within the bottom 3. So this computes each team's actual
+// occupied slot range from its tie group and flags a zone on any overlap,
+// coloring the whole tied group together rather than just whichever slot
+// happens to clear the raw position check.
+function getZoneColor(row: StandingRow, rows: StandingRow[]): string {
+  const total = rows.length
+  const betterCount = rows.filter((r) => r.position < row.position).length
+  const tieGroupSize = rows.filter((r) => r.position === row.position).length
+  const groupStart = betterCount + 1
+  const groupEnd = betterCount + tieGroupSize
+
+  const zones = [
+    { start: 1, end: 4, color: QUALIFICATION_ZONES[0].color },
+    { start: 5, end: 6, color: QUALIFICATION_ZONES[1].color },
+    { start: 7, end: 7, color: QUALIFICATION_ZONES[2].color },
+    { start: total - 2, end: total, color: QUALIFICATION_ZONES[3].color },
+  ]
+
+  const zone = zones.find((z) => groupStart <= z.end && groupEnd >= z.start)
+  return zone?.color ?? 'transparent'
 }
 
 function resolveClub(tla: string, clubsByShortName: Record<string, Club>): Club | null {
@@ -127,7 +146,7 @@ function TablePage() {
                   const club = resolveClub(row.team.tla, clubsByShortName)
                   const badgeLabel = club?.short_name ?? row.team.tla
                   const displayName = club?.name ?? row.team.name
-                  const rowColor = getZoneColor(row.position, rows.length)
+                  const rowColor = getZoneColor(row, rows)
 
                   const nameCell = (
                     <div className="flex items-center gap-3">
