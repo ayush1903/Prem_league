@@ -3,9 +3,27 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
-import { getBadgeColor } from '../lib/clubColors'
 import ClubCrest from '../components/ClubCrest'
 import SiteHeader from '../components/SiteHeader'
+
+// Simplified standard convention: top 4 = Champions League, 5th-6th =
+// Europa League, 7th = Conference League, bottom 3 = relegation. Bottom-3
+// is computed relative to the table's actual size (not hardcoded to 20)
+// so this still degrades sensibly if standings data is incomplete.
+const QUALIFICATION_ZONES = [
+  { id: 'ucl', label: 'Champions League', color: '#2563eb' },
+  { id: 'uel', label: 'Europa League', color: '#f97316' },
+  { id: 'ecl', label: 'Conference League', color: '#16a34a' },
+  { id: 'rel', label: 'Relegation', color: '#dc2626' },
+] as const
+
+function getZoneColor(position: number, totalRows: number): string {
+  if (position <= 4) return QUALIFICATION_ZONES[0].color
+  if (position <= 6) return QUALIFICATION_ZONES[1].color
+  if (position === 7) return QUALIFICATION_ZONES[2].color
+  if (position > totalRows - 3) return QUALIFICATION_ZONES[3].color
+  return 'transparent'
+}
 
 type Club = {
   id: number
@@ -109,7 +127,7 @@ function TablePage() {
                   const club = resolveClub(row.team.tla, clubsByShortName)
                   const badgeLabel = club?.short_name ?? row.team.tla
                   const displayName = club?.name ?? row.team.name
-                  const rowColor = club ? getBadgeColor(club.short_name) : 'transparent'
+                  const rowColor = getZoneColor(row.position, rows.length)
 
                   const nameCell = (
                     <div className="flex items-center gap-3">
@@ -151,6 +169,21 @@ function TablePage() {
               </tbody>
             </table>
           </motion.div>
+        )}
+
+        {!error && rows.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+            {QUALIFICATION_ZONES.map((zone) => (
+              <div key={zone.id} className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                <span
+                  aria-hidden="true"
+                  className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm"
+                  style={{ backgroundColor: zone.color }}
+                />
+                {zone.label}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
