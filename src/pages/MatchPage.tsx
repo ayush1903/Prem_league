@@ -301,7 +301,9 @@ function MatchPage() {
       setHomeClub(home)
       setAwayClub(away)
 
-      fetch(`/api/head-to-head?matchId=${id}`)
+      fetch(
+        `/api/head-to-head?matchId=${id}&homeTla=${encodeURIComponent(found.match.homeTeam.tla)}&awayTla=${encodeURIComponent(found.match.awayTeam.tla)}`,
+      )
         .then((res) => res.json())
         .then((data: HeadToHeadResponse) => setHeadToHead(data))
         .catch(() => {})

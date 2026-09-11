@@ -1,15 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
+import { normalizeTla } from './_lib/tla.js'
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY)
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
 // Reads season-to-date form for a team straight out of our own standings
-// cache — no extra football-data.org call. Matches by team id, since that's
-// consistent across football-data.org endpoints (aggregates in the
-// head2head response don't carry a tla, only id/name).
-async function getFormFor(teamId) {
-  if (!teamId) return null
+// cache — no extra football-data.org call. Matches by tla against the team
+// identity the caller already resolved (MatchPage's own clubsByShortName
+// lookup), rather than the head2head response's `aggregates` block: that
+// block is entirely absent when the two sides have zero prior meetings
+// (e.g. a first-ever CL fixture), which left form unavailable even for a
+// tracked PL club in that case.
+async function getFormFor(tla) {
+  if (!tla) return null
 
   const { data: cached, error } = await supabase
     .from('standings_cache')
@@ -24,7 +28,8 @@ async function getFormFor(teamId) {
   }
 
   const table = cached?.data?.standings?.find((group) => group.type === 'TOTAL')?.table ?? []
-  const row = table.find((entry) => entry.team.id === teamId)
+  const normalized = normalizeTla(tla).toUpperCase()
+  const row = table.find((entry) => normalizeTla(entry.team.tla).toUpperCase() === normalized)
 
   if (!row) return null
 
@@ -89,10 +94,10 @@ export default async function handler(req, res) {
       }
     }
 
-    const [home, away] = await Promise.all([
-      getFormFor(headToHead.aggregates?.homeTeam?.id),
-      getFormFor(headToHead.aggregates?.awayTeam?.id),
-    ])
+    const homeTla = typeof req.query?.homeTla === 'string' ? req.query.homeTla : null
+    const awayTla = typeof req.query?.awayTla === 'string' ? req.query.awayTla : null
+
+    const [home, away] = await Promise.all([getFormFor(homeTla), getFormFor(awayTla)])
 
     res.status(200).json({ headToHead, form: { home, away } })
   } catch (error) {
