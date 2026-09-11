@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer, clubCardHover } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
-import { getBadgeColor } from '../lib/clubColors'
+import { getClubColor } from '../lib/clubColors'
 import { formatKickoffTime, formatKickoffDate } from '../lib/dates'
 import { POSITION_LABELS, isUnavailable, getStatusBadge, type Player } from '../lib/players'
 import CompetitionLogo from '../components/CompetitionLogo'
@@ -337,8 +337,8 @@ function MatchPage() {
   const allMeetings = headToHead?.headToHead.matches ?? []
   const h2hSummary = allMeetings.length > 0 ? summarizeH2H(allMeetings, match.homeTeam.tla, match.awayTeam.tla) : null
   const recentMeetings = allMeetings.slice(0, RECENT_MEETINGS_COUNT)
-  const homeColor = getBadgeColor(homeClub?.short_name ?? match.homeTeam.tla)
-  const awayColor = getBadgeColor(awayClub?.short_name ?? match.awayTeam.tla)
+  const homeColor = getClubColor(homeClub?.short_name ?? match.homeTeam.tla, Boolean(homeClub))
+  const awayColor = getClubColor(awayClub?.short_name ?? match.awayTeam.tla, Boolean(awayClub))
 
   return (
     <div className="min-h-screen bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">

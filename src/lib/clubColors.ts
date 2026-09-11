@@ -49,6 +49,16 @@ export function getBadgeColor(shortName: string): string {
   return `hsl(${hashHue(normalized)}, 60%, 38%)`
 }
 
+// Matches ClubCrest's neutral gray-400 fallback badge — used anywhere else a
+// club's color would otherwise be shown (hero glows, accent borders) but the
+// club isn't one of our tracked 20 (e.g. a foreign side in a CL fixture), so
+// we don't present a fabricated hashed hue as if it were a real brand color.
+export const NEUTRAL_CLUB_COLOR = '#9CA3AF'
+
+export function getClubColor(shortName: string, known: boolean): string {
+  return known ? getBadgeColor(shortName) : NEUTRAL_CLUB_COLOR
+}
+
 // Falls back to deriving a short badge label from the full club name when
 // a real short_name isn't available yet (e.g. clubs not yet cached in Supabase).
 export function getClubInitials(clubName: string, shortName?: string | null): string {

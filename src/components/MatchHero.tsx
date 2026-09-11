@@ -42,6 +42,15 @@ function MatchHero({ home, away, time, date, eyebrow }: Props) {
         className="absolute -right-10 top-[-20%] h-[140%] w-[45%] opacity-30 blur-3xl"
         style={{ backgroundColor: away.color }}
       />
+      {/* Legibility floor for the score/time: pulls the strip under it back
+          toward the base color regardless of which two club colors are
+          glowing on either side, instead of relying on every color pair
+          blending safely on its own. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 left-1/2 w-[36%] -translate-x-1/2"
+        style={{ background: 'linear-gradient(to right, transparent, #0d0b10 30%, #0d0b10 70%, transparent)' }}
+      />
 
       <div className="relative px-6 py-7 sm:px-8 sm:py-8">
         {eyebrow && <div className="mb-5 flex items-center gap-1.5 text-xs font-medium text-white/50">{eyebrow}</div>}
@@ -51,7 +60,7 @@ function MatchHero({ home, away, time, date, eyebrow }: Props) {
             <p className="truncate font-body text-base font-semibold text-white sm:text-lg">{home.name}</p>
           </div>
 
-          <div className="text-center text-white">
+          <div className="text-center text-white" style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}>
             <p className="font-display text-4xl font-extrabold leading-none sm:text-5xl">{time}</p>
             <p className="mt-2 text-xs text-white/50">{date}</p>
           </div>

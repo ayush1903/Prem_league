@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
-import { getBadgeColor } from '../lib/clubColors'
+import { getBadgeColor, getClubColor } from '../lib/clubColors'
 import { formatKickoffTime, formatKickoffDate } from '../lib/dates'
 import ClubCrest from '../components/ClubCrest'
 import MatchHero from '../components/MatchHero'
@@ -46,14 +46,14 @@ function NextMatchHero({ match, clubsByShortName }: { match: Match; clubsByShort
           name: homeClub?.name ?? match.homeTeam.name,
           crestUrl: homeClub?.crest ?? match.homeTeam.crest,
           known: Boolean(homeClub),
-          color: getBadgeColor(homeClub?.short_name ?? match.homeTeam.tla),
+          color: getClubColor(homeClub?.short_name ?? match.homeTeam.tla, Boolean(homeClub)),
         }}
         away={{
           label: awayClub?.short_name ?? match.awayTeam.tla,
           name: awayClub?.name ?? match.awayTeam.name,
           crestUrl: awayClub?.crest ?? match.awayTeam.crest,
           known: Boolean(awayClub),
-          color: getBadgeColor(awayClub?.short_name ?? match.awayTeam.tla),
+          color: getClubColor(awayClub?.short_name ?? match.awayTeam.tla, Boolean(awayClub)),
         }}
       />
     </MotionLink>
