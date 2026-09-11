@@ -45,6 +45,59 @@ type StandingsPayload = {
   standings: StandingsGroup[]
 }
 
+type FormResult = 'W' | 'D' | 'L' | null
+
+const RESULT_STYLES: Record<'W' | 'D' | 'L', { bg: string; fg: string; label: string }> = {
+  W: { bg: '#16a34a', fg: '#ffffff', label: 'Win' },
+  D: { bg: '#9CA3AF', fg: '#ffffff', label: 'Draw' },
+  L: { bg: '#dc2626', fg: '#ffffff', label: 'Loss' },
+}
+
+function FormIcon({ result }: { result: FormResult }) {
+  if (result === null) {
+    return (
+      <span
+        aria-label="Not yet played"
+        title="Not yet played"
+        className="inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-gray-300 dark:border-gray-700"
+      />
+    )
+  }
+
+  const { bg, fg, label } = RESULT_STYLES[result]
+
+  return (
+    <span
+      aria-label={label}
+      title={label}
+      className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold leading-none"
+      style={{ backgroundColor: bg, color: fg }}
+    >
+      {result === 'W' && (
+        <svg viewBox="0 0 12 12" className="h-2 w-2" fill="none" stroke={fg} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2.5 6.5L5 9L9.5 3.5" />
+        </svg>
+      )}
+      {result === 'D' && <span className="block h-[2px] w-1.5 rounded-full" style={{ backgroundColor: fg }} />}
+      {result === 'L' && (
+        <svg viewBox="0 0 12 12" className="h-2 w-2" fill="none" stroke={fg} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 3L9 9M9 3L3 9" />
+        </svg>
+      )}
+    </span>
+  )
+}
+
+function FormStrip({ results }: { results: FormResult[] }) {
+  return (
+    <div className="flex items-center justify-end gap-1">
+      {results.map((result, i) => (
+        <FormIcon key={i} result={result} />
+      ))}
+    </div>
+  )
+}
+
 // Zone boundaries are in terms of true table slots (1st, 2nd, ...), but
 // `position` is a competition-style rank that's shared by tied teams and
 // then skips ahead (two teams tied at 17 are both `position: 17`, and the
@@ -88,6 +141,7 @@ function resolveClub(tla: string, clubsByShortName: Record<string, Club>): Club 
 function TablePage() {
   const [rows, setRows] = useState<StandingRow[]>([])
   const [clubsByShortName, setClubsByShortName] = useState<Record<string, Club>>({})
+  const [formByTla, setFormByTla] = useState<Record<string, FormResult[]>>({})
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -95,14 +149,18 @@ function TablePage() {
     Promise.all([
       fetch('/api/standings').then((res) => res.json()),
       fetch('/api/clubs').then((res) => res.json()),
+      fetch('/api/club-form')
+        .then((res) => res.json())
+        .catch(() => ({ form: {} })),
     ])
-      .then(([standingsData, clubsData]: [{ standings: StandingsPayload }, { clubs: Club[] }]) => {
+      .then(([standingsData, clubsData, formData]: [{ standings: StandingsPayload }, { clubs: Club[] }, { form?: Record<string, FormResult[]> }]) => {
         const table = standingsData.standings?.standings?.find((group) => group.type === 'TOTAL')?.table ?? []
         const clubs: Club[] = clubsData.clubs ?? []
         const byShortName = Object.fromEntries(clubs.map((club) => [club.short_name.toUpperCase(), club]))
 
         setRows(table)
         setClubsByShortName(byShortName)
+        setFormByTla(formData.form ?? {})
       })
       .catch(() => setError('Failed to load table'))
       .finally(() => setLoading(false))
@@ -139,6 +197,7 @@ function TablePage() {
                   <th className="px-4 py-3 text-right font-medium">L</th>
                   <th className="px-4 py-3 text-right font-medium">GD</th>
                   <th className="px-4 py-3 text-right font-medium">Pts</th>
+                  <th className="px-4 py-3 text-right font-medium">Last 5</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,6 +206,7 @@ function TablePage() {
                   const badgeLabel = club?.short_name ?? row.team.tla
                   const displayName = club?.name ?? row.team.name
                   const rowColor = getZoneColor(row, rows)
+                  const form = formByTla[normalizeTla(row.team.tla).toUpperCase()] ?? [null, null, null, null, null]
 
                   const nameCell = (
                     <div className="flex items-center gap-3">
@@ -182,6 +242,9 @@ function TablePage() {
                       <td className="px-4 py-3 text-right">{row.lost}</td>
                       <td className="px-4 py-3 text-right">{row.goalDifference}</td>
                       <td className="px-4 py-3 text-right font-semibold">{row.points}</td>
+                      <td className="px-4 py-3">
+                        <FormStrip results={form} />
+                      </td>
                     </motion.tr>
                   )
                 })}
