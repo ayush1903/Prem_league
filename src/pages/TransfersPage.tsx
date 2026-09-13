@@ -43,6 +43,8 @@ function formatDate(dateLogged: string): string {
   })
 }
 
+const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === '1'
+
 function TransfersPage() {
   const [transfers, setTransfers] = useState<Transfer[]>([])
   const [crestByShortName, setCrestByShortName] = useState<Record<string, string | null>>({})
@@ -50,7 +52,9 @@ function TransfersPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/transfers')
+    const previewParam = isPreview ? '?preview=1' : ''
+
+    fetch(`/api/transfers${previewParam}`)
       .then((res) => res.json())
       .then((data) => setTransfers(data.transfers ?? []))
       .catch(() => setError('Failed to load transfers'))
@@ -70,6 +74,12 @@ function TransfersPage() {
       <SiteHeader />
 
       <div className="mx-auto max-w-3xl px-6 py-10">
+        {isPreview && (
+          <div className="mb-6 rounded-lg border border-yellow-400 bg-yellow-100 px-4 py-2 text-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-950 dark:text-yellow-300">
+            Preview mode — showing draft content that isn't published yet.
+          </div>
+        )}
+
         {error && <p className="text-red-500">{error}</p>}
 
         {!error && loading && <p className="text-gray-600 dark:text-gray-400">Loading transfers...</p>}
