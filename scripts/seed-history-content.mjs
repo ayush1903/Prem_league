@@ -1,7 +1,9 @@
 // One-off seed for the six "Premier League Icons" era cards. Idempotent via
 // upsert on manager_name (unique constraint added in 0009_create_history_content.sql).
 // Run after that migration has been applied in Supabase:
-//   node --env-file=.env.local scripts/seed-history-content.mjs
+//   node --experimental-websocket --env-file=.env.local scripts/seed-history-content.mjs
+// (the --experimental-websocket flag is only needed on Node <22 — supabase-js's
+// realtime client expects a native WebSocket global that Node adds by default in 22+)
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY)
