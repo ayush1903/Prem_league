@@ -8,6 +8,7 @@ import { formatKickoffTime, formatKickoffDate } from '../lib/dates'
 import ClubCrest from '../components/ClubCrest'
 import MatchHero from '../components/MatchHero'
 import SiteHeader from '../components/SiteHeader'
+import HistorySection from '../components/HistorySection'
 
 const MotionLink = motion.create(Link)
 
@@ -88,6 +89,8 @@ function Home() {
   return (
     <div className="min-h-screen bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
       <SiteHeader />
+
+      <HistorySection />
 
       <div className="mx-auto max-w-5xl px-6 py-10">
         {error && <p className="text-red-500">{error}</p>}
