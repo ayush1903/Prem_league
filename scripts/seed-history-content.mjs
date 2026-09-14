@@ -27,8 +27,8 @@ const rows = [
     era_label: '1996–2018',
     photo_url:
       'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/25th_Laureus_World_Sports_Awards_-_Red_Carpet_-_Ars%C3%A8ne_Wenger_-_240422_192850_%28cropped%29.jpg/330px-25th_Laureus_World_Sports_Awards_-_Red_Carpet_-_Ars%C3%A8ne_Wenger_-_240422_192850_%28cropped%29.jpg',
-    headline_stat: '49',
-    headline_stat_label: "consecutive unbeaten league matches, spanning the 2003–04 'Invincibles' season",
+    headline_stat: '38',
+    headline_stat_label: "games, 0 defeats — the 2003–04 'Invincibles' season",
     summary:
       'The only manager to take a Premier League team through an entire 38-game season unbeaten, and a pioneer of the continental approach to fitness and diet in English football.',
     sort_order: 2,

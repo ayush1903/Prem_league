@@ -47,11 +47,11 @@ function EraCard({ card }: { card: EraCard }) {
         style={{ backgroundColor: color }}
       />
       <div className="relative flex flex-col gap-4 p-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-start gap-4">
           <PersonPhoto name={card.manager_name} photoUrl={card.photo_url} size="lg" />
           <div className="min-w-0">
             <p className="truncate font-body text-base font-semibold text-white">{card.manager_name}</p>
-            <p className="truncate text-sm text-white/50">
+            <p className="text-sm text-white/50">
               {card.club_name}
               {card.era_label ? ` · ${card.era_label}` : ''}
             </p>
