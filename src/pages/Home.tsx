@@ -1,11 +1,9 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { fadeUp, staggerContainer } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
-import { getBadgeColor, getClubColor } from '../lib/clubColors'
+import { getClubColor } from '../lib/clubColors'
 import { formatKickoffTime, formatKickoffDate } from '../lib/dates'
-import ClubCrest from '../components/ClubCrest'
 import MatchHero from '../components/MatchHero'
 import SiteHeader from '../components/SiteHeader'
 import HistorySection from '../components/HistorySection'
@@ -108,31 +106,6 @@ function Home() {
             </div>
           )
         )}
-
-        {clubs.length > 0 && <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">The 20 clubs</p>}
-
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer(0.05, 0.15)}
-          className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"
-        >
-          {clubs.map((club) => (
-            <MotionLink
-              key={club.id}
-              to={`/club/${club.short_name.toLowerCase()}`}
-              variants={fadeUp}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ duration: 0.15 }}
-              className="club-card flex flex-col items-center gap-3 rounded-lg bg-gray-100 p-4 text-center dark:bg-gray-900"
-              style={{ '--club': getBadgeColor(club.short_name) } as CSSProperties}
-            >
-              <ClubCrest label={club.short_name} crestUrl={club.crest} alt={club.name} size="xl" />
-              <p className="text-sm font-medium">{club.name}</p>
-            </MotionLink>
-          ))}
-        </motion.div>
       </div>
     </div>
   )

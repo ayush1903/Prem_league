@@ -34,6 +34,12 @@ function SiteHeader() {
         </h1>
         <div className="flex items-center gap-6">
           <Link
+            to="/clubs"
+            className="text-sm font-medium text-white/80 transition-colors hover:text-white"
+          >
+            Clubs
+          </Link>
+          <Link
             to="/table"
             className="text-sm font-medium text-white/80 transition-colors hover:text-white"
           >
