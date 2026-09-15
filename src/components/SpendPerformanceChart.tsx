@@ -70,7 +70,35 @@ function LabelWithHalo({
   )
 }
 
-function renderPoint(
+// Dots and labels are two separate Scatter layers (see below) rather than
+// one <g> per point, specifically so every label paints above every dot —
+// with a single layer, whichever point happened to come later in the data
+// array could render its dot on top of an earlier point's label whenever
+// two clubs' spend/points were close enough to sit near each other (e.g.
+// Man City and Arsenal only £11.2m apart), clipping the label text.
+function renderDot(props: ShapeProps, highlightClub: string | undefined, palette: ChartPalette) {
+  const { cx, cy, payload } = props
+  if (cx === undefined || cy === undefined || !payload) return <g />
+
+  const isHighlighted = Boolean(highlightClub) && payload.shortName.toUpperCase() === highlightClub!.toUpperCase()
+  const dimmed = Boolean(highlightClub) && !isHighlighted
+  const color = dimmed ? palette.dimmedDot : getBadgeColor(payload.shortName)
+  const radius = isHighlighted ? 8 : dimmed ? 3.5 : 6
+
+  return (
+    <circle
+      key={payload.shortName}
+      cx={cx}
+      cy={cy}
+      r={radius}
+      fill={color}
+      stroke={isHighlighted ? '#fff' : 'none'}
+      strokeWidth={isHighlighted ? 2 : 0}
+    />
+  )
+}
+
+function renderLabel(
   props: ShapeProps,
   highlightClub: string | undefined,
   labeledClubs: Set<string>,
@@ -80,18 +108,19 @@ function renderPoint(
   if (cx === undefined || cy === undefined || !payload) return <g />
 
   const isHighlighted = Boolean(highlightClub) && payload.shortName.toUpperCase() === highlightClub!.toUpperCase()
-  const dimmed = Boolean(highlightClub) && !isHighlighted
   const showLabel = isHighlighted || (!highlightClub && labeledClubs.has(payload.shortName.toUpperCase()))
-  const color = dimmed ? palette.dimmedDot : getBadgeColor(payload.shortName)
-  const radius = isHighlighted ? 8 : dimmed ? 3.5 : 6
+  if (!showLabel) return <g key={payload.shortName} />
 
+  const radius = isHighlighted ? 8 : 6
   return (
-    <g key={payload.shortName}>
-      <circle cx={cx} cy={cy} r={radius} fill={color} stroke={isHighlighted ? '#fff' : 'none'} strokeWidth={isHighlighted ? 2 : 0} />
-      {showLabel && (
-        <LabelWithHalo x={cx + radius + 4} y={cy + 3} text={payload.shortName} bold={isHighlighted} palette={palette} />
-      )}
-    </g>
+    <LabelWithHalo
+      key={payload.shortName}
+      x={cx + radius + 4}
+      y={cy + 3}
+      text={payload.shortName}
+      bold={isHighlighted}
+      palette={palette}
+    />
   )
 }
 
@@ -166,8 +195,15 @@ function SpendPerformanceChart({ points, slope, intercept, highlightClub, labele
         <Scatter
           data={points}
           dataKey="points"
-          shape={(props: ShapeProps) => renderPoint(props, highlightClub, labeledSet, palette)}
+          shape={(props: ShapeProps) => renderDot(props, highlightClub, palette)}
           isAnimationActive={false}
+        />
+        <Scatter
+          data={points}
+          dataKey="points"
+          shape={(props: ShapeProps) => renderLabel(props, highlightClub, labeledSet, palette)}
+          isAnimationActive={false}
+          legendType="none"
         />
       </ScatterChart>
     </ResponsiveContainer>
