@@ -147,7 +147,14 @@ function ClubsPage() {
                     best-fit trend — dots above it are outperforming their spend; dots below are underperforming it.
                   </p>
 
-                  <SpendPerformanceChart points={spend.points} slope={spend.slope} intercept={spend.intercept} />
+                  <SpendPerformanceChart
+                    points={spend.points}
+                    slope={spend.slope}
+                    intercept={spend.intercept}
+                    labeledClubs={[spend.overperformer?.shortName, spend.underperformer?.shortName].filter(
+                      (v): v is string => Boolean(v),
+                    )}
+                  />
 
                   {spendRanks && spendRanks.top.length > 0 && (
                     <table className="mt-3 w-full border-collapse text-xs">
@@ -258,6 +265,9 @@ function ClubsPage() {
                     points={attackDefense.points}
                     avgGoalsFor={attackDefense.avgGoalsFor}
                     avgGoalsAgainst={attackDefense.avgGoalsAgainst}
+                    labeledClubs={[attackDefense.bestBalanced?.shortName, attackDefense.worstBalanced?.shortName].filter(
+                      (v): v is string => Boolean(v),
+                    )}
                   />
 
                   {(() => {
