@@ -10,6 +10,8 @@ import ClubHero from '../components/ClubHero'
 import CompetitionLogo from '../components/CompetitionLogo'
 import SectionHeading from '../components/SectionHeading'
 import SiteHeader from '../components/SiteHeader'
+import SpendPerformanceChart, { type SpendPoint } from '../components/SpendPerformanceChart'
+import AttackDefenseChart, { type AttackDefensePoint } from '../components/AttackDefenseChart'
 
 const MotionLink = motion.create(Link)
 
@@ -72,6 +74,24 @@ type NextMatch = {
   isHome: boolean
 }
 
+type SpendPointWithResidual = SpendPoint & { residual: number }
+type AttackDefensePointWithBalance = AttackDefensePoint & { balanceScore: number }
+
+type ClubsAnalytics = {
+  spendVsPerformance: {
+    points: SpendPointWithResidual[]
+    correlation: number | null
+    sampleSize: number
+    slope: number
+    intercept: number
+  }
+  attackVsDefense: {
+    points: AttackDefensePointWithBalance[]
+    avgGoalsFor: number
+    avgGoalsAgainst: number
+  }
+}
+
 type Status = 'loading' | 'ready' | 'not-found' | 'error'
 
 const FIXTURE_COMPETITIONS: { code: string; label: string }[] = [
@@ -117,6 +137,21 @@ function extractClubMatches(matches: Match[], competitionLabel: string, shortNam
   })
 }
 
+function ordinal(n: number): string {
+  const mod100 = n % 100
+  if (mod100 >= 11 && mod100 <= 13) return `${n}th`
+  switch (n % 10) {
+    case 1:
+      return `${n}st`
+    case 2:
+      return `${n}nd`
+    case 3:
+      return `${n}rd`
+    default:
+      return `${n}th`
+  }
+}
+
 function formatMatchDate(utcDate: string): string {
   return new Date(utcDate).toLocaleString(undefined, {
     weekday: 'short',
@@ -154,6 +189,16 @@ function ClubPage() {
   const [transfers, setTransfers] = useState<Transfer[]>([])
   const [nextMatch, setNextMatch] = useState<NextMatch | null>(null)
   const [crest, setCrest] = useState<string | null>(null)
+  const [analytics, setAnalytics] = useState<ClubsAnalytics | null>(null)
+
+  // League-wide, not per-club — fetched once rather than inside the
+  // per-slug effect below (its data doesn't change when slug changes).
+  useEffect(() => {
+    fetch('/api/clubs-analytics')
+      .then((res) => res.json())
+      .then((data) => setAnalytics(data))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!slug) {
@@ -425,6 +470,89 @@ function ClubPage() {
             )}
           </motion.div>
         </motion.div>
+
+        {analytics && (
+          <section className="mt-8">
+            <SectionHeading color={clubColor}>{team.team} vs. the league</SectionHeading>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {(() => {
+                const own = analytics.spendVsPerformance.points.find((p) => p.shortName.toUpperCase() === badgeLabel)
+                if (!own) return null
+
+                const rank =
+                  [...analytics.spendVsPerformance.points]
+                    .sort((a, b) => b.netSpendM - a.netSpendM)
+                    .findIndex((p) => p.shortName === own.shortName) + 1
+
+                return (
+                  <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900" style={{ borderLeft: `3px solid ${clubColor}` }}>
+                    <p className="mb-2 text-sm font-semibold">Spend vs. performance</p>
+                    <SpendPerformanceChart
+                      points={analytics.spendVsPerformance.points}
+                      slope={analytics.spendVsPerformance.slope}
+                      intercept={analytics.spendVsPerformance.intercept}
+                      highlightClub={badgeLabel}
+                      height={200}
+                    />
+                    <div className="mt-2 flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: clubColor }} />
+                        {team.team}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-700" />
+                        other clubs
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                      <strong>{team.team}:</strong> {ordinal(rank)}-highest net spend (£{own.netSpendM.toFixed(1)}m),{' '}
+                      {own.points} pts — {own.residual >= 0 ? `+${own.residual.toFixed(1)} above` : `${own.residual.toFixed(1)} below`}{' '}
+                      what that spend predicts.
+                    </p>
+                  </div>
+                )
+              })()}
+
+              {(() => {
+                const own = analytics.attackVsDefense.points.find((p) => p.shortName.toUpperCase() === badgeLabel)
+                if (!own) return null
+
+                const rank =
+                  [...analytics.attackVsDefense.points]
+                    .sort((a, b) => b.balanceScore - a.balanceScore)
+                    .findIndex((p) => p.shortName === own.shortName) + 1
+
+                return (
+                  <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900" style={{ borderLeft: `3px solid ${clubColor}` }}>
+                    <p className="mb-2 text-sm font-semibold">Attack vs. defense</p>
+                    <AttackDefenseChart
+                      points={analytics.attackVsDefense.points}
+                      avgGoalsFor={analytics.attackVsDefense.avgGoalsFor}
+                      avgGoalsAgainst={analytics.attackVsDefense.avgGoalsAgainst}
+                      highlightClub={badgeLabel}
+                      height={200}
+                    />
+                    <div className="mt-2 flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: clubColor }} />
+                        {team.team}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-700" />
+                        other clubs
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                      <strong>{team.team}:</strong> {own.balanceScore >= 0 ? '+' : ''}
+                      {own.balanceScore.toFixed(0)} balance vs. league average — {ordinal(rank)}-furthest into the
+                      strong-attack/strong-defense quadrant.
+                    </p>
+                  </div>
+                )
+              })()}
+            </div>
+          </section>
+        )}
 
         <div className="mt-10 space-y-8">
           {POSITION_GROUPS.map((group, groupIndex) => {
