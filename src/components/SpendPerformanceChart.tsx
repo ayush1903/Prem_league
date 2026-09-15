@@ -2,6 +2,7 @@ import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ResponsiveContainer
 import { getBadgeColor } from '../lib/clubColors'
 import { useIsDarkMode } from '../lib/theme'
 import { getChartPalette, TOOLTIP_BG, TOOLTIP_TEXT, TOOLTIP_MUTED, type ChartPalette } from '../lib/chartTheme'
+import { nudgeCollisions, labelWouldCollideRight } from '../lib/chartLayout'
 
 export type SpendPoint = {
   shortName: string
@@ -10,10 +11,15 @@ export type SpendPoint = {
   points: number
 }
 
+// plotNetSpendM/plotPoints are the (possibly nudged) coordinates actually
+// handed to Recharts for positioning — netSpendM/points stay the true
+// values, read by the tooltip and by the ranked table on /clubs.
+type PlottedPoint = SpendPoint & { plotNetSpendM: number; plotPoints: number }
+
 type ShapeProps = {
   cx?: number
   cy?: number
-  payload?: SpendPoint
+  payload?: PlottedPoint
 }
 
 type Props = {
@@ -34,28 +40,33 @@ type Props = {
 // A background halo behind a label so it stays legible over the grid,
 // other dots, or a card's own background — width is a rough character-count
 // estimate (no canvas measurement available here), generous enough to never
-// clip.
+// clip. `align` flips which side of (x, y) the box grows from — used to
+// keep a label from covering a dot that happens to sit on its default side.
 function LabelWithHalo({
   x,
   y,
   text,
   bold,
+  align,
   palette,
 }: {
   x: number
   y: number
   text: string
   bold: boolean
+  align: 'start' | 'end'
   palette: ChartPalette
 }) {
   const fontSize = bold ? 10 : 9
-  const width = text.length * (fontSize * 0.64) + 8
+  const textWidth = text.length * (fontSize * 0.64) + 8
+  const rectX = align === 'start' ? x - 3 : x - textWidth + 3
+
   return (
     <g>
       <rect
-        x={x - 3}
+        x={rectX}
         y={y - fontSize - 1}
-        width={width}
+        width={textWidth}
         height={fontSize + 6}
         rx={3}
         fill={palette.labelBg}
@@ -63,19 +74,22 @@ function LabelWithHalo({
         strokeWidth={0.75}
         opacity={0.92}
       />
-      <text x={x} y={y} fontSize={fontSize} fontWeight={bold ? 600 : 500} fill={palette.pointLabel}>
+      <text x={x} y={y} textAnchor={align} fontSize={fontSize} fontWeight={bold ? 600 : 500} fill={palette.pointLabel}>
         {text}
       </text>
     </g>
   )
 }
 
-// Dots and labels are two separate Scatter layers (see below) rather than
-// one <g> per point, specifically so every label paints above every dot —
-// with a single layer, whichever point happened to come later in the data
-// array could render its dot on top of an earlier point's label whenever
-// two clubs' spend/points were close enough to sit near each other (e.g.
-// Man City and Arsenal only £11.2m apart), clipping the label text.
+// Dots and labels are two separate Scatter layers rather than one <g> per
+// point, specifically so every label paints above every dot — with a
+// single layer, whichever point happened to come later in the data array
+// could render its dot on top of an earlier point's label whenever two
+// clubs' spend/points were close (e.g. Man City and Arsenal, £11.2m
+// apart). The flip side of that fix is a label can now cover a *different*
+// point's dot instead if it extends toward it — handled below by flipping
+// that label to the other side when its default position would land on
+// another dot (see labelSides in the component).
 function renderDot(props: ShapeProps, highlightClub: string | undefined, palette: ChartPalette) {
   const { cx, cy, payload } = props
   if (cx === undefined || cy === undefined || !payload) return <g />
@@ -102,6 +116,7 @@ function renderLabel(
   props: ShapeProps,
   highlightClub: string | undefined,
   labeledClubs: Set<string>,
+  labelSides: Map<string, 'start' | 'end'>,
   palette: ChartPalette,
 ) {
   const { cx, cy, payload } = props
@@ -112,15 +127,11 @@ function renderLabel(
   if (!showLabel) return <g key={payload.shortName} />
 
   const radius = isHighlighted ? 8 : 6
+  const align = labelSides.get(payload.shortName.toUpperCase()) ?? 'start'
+  const x = align === 'start' ? cx + radius + 4 : cx - radius - 4
+
   return (
-    <LabelWithHalo
-      key={payload.shortName}
-      x={cx + radius + 4}
-      y={cy + 3}
-      text={payload.shortName}
-      bold={isHighlighted}
-      palette={palette}
-    />
+    <LabelWithHalo key={payload.shortName} x={x} y={cy + 3} text={payload.shortName} bold={isHighlighted} align={align} palette={palette} />
   )
 }
 
@@ -149,11 +160,34 @@ function SpendPerformanceChart({ points, slope, intercept, highlightClub, labele
   const labeledSet = new Set((labeledClubs ?? []).map((c) => c.toUpperCase()))
 
   const xs = points.map((p) => p.netSpendM)
+  const ys = points.map((p) => p.points)
   const minX = Math.min(...xs, 0)
   const maxX = Math.max(...xs, 0)
+  const xRange = maxX - minX || 1
+  const yRange = Math.max(...ys) - Math.min(...ys) || 1
+
+  const positions = nudgeCollisions(
+    points.map((p) => ({ key: p.shortName, x: p.netSpendM, y: p.points })),
+    xRange,
+    yRange,
+  )
+  const plotPoints: PlottedPoint[] = points.map((p) => {
+    const pos = positions.get(p.shortName)!
+    return { ...p, plotNetSpendM: pos.x, plotPoints: pos.y }
+  })
+
+  const labelSides = new Map<string, 'start' | 'end'>(
+    points
+      .filter((p) => labeledSet.has(p.shortName.toUpperCase()) || p.shortName.toUpperCase() === highlightClub?.toUpperCase())
+      .map((p) => [
+        p.shortName.toUpperCase(),
+        labelWouldCollideRight(p.shortName, positions, xRange, yRange) ? 'end' : 'start',
+      ]),
+  )
+
   const trendLine = [
-    { netSpendM: minX, points: intercept + slope * minX },
-    { netSpendM: maxX, points: intercept + slope * maxX },
+    { plotNetSpendM: minX, plotPoints: intercept + slope * minX },
+    { plotNetSpendM: maxX, plotPoints: intercept + slope * maxX },
   ]
 
   return (
@@ -162,7 +196,7 @@ function SpendPerformanceChart({ points, slope, intercept, highlightClub, labele
         <CartesianGrid stroke={palette.grid} />
         <XAxis
           type="number"
-          dataKey="netSpendM"
+          dataKey="plotNetSpendM"
           name="Net spend"
           tick={!isMini ? { fontSize: 10, fill: palette.tick } : false}
           axisLine={{ stroke: palette.axisLine }}
@@ -175,7 +209,7 @@ function SpendPerformanceChart({ points, slope, intercept, highlightClub, labele
         />
         <YAxis
           type="number"
-          dataKey="points"
+          dataKey="plotPoints"
           name="Points"
           tick={!isMini ? { fontSize: 10, fill: palette.tick } : false}
           axisLine={{ stroke: palette.axisLine }}
@@ -186,22 +220,22 @@ function SpendPerformanceChart({ points, slope, intercept, highlightClub, labele
         {!isMini && <Tooltip cursor={{ strokeDasharray: '3 3', stroke: palette.axisLine }} content={<ChartTooltip />} />}
         <Scatter
           data={trendLine}
-          dataKey="points"
+          dataKey="plotPoints"
           line={{ stroke: palette.referenceLine, strokeDasharray: '4 4', strokeWidth: 1.5 }}
           shape={() => <g />}
           isAnimationActive={false}
           legendType="none"
         />
         <Scatter
-          data={points}
-          dataKey="points"
+          data={plotPoints}
+          dataKey="plotPoints"
           shape={(props: ShapeProps) => renderDot(props, highlightClub, palette)}
           isAnimationActive={false}
         />
         <Scatter
-          data={points}
-          dataKey="points"
-          shape={(props: ShapeProps) => renderLabel(props, highlightClub, labeledSet, palette)}
+          data={plotPoints}
+          dataKey="plotPoints"
+          shape={(props: ShapeProps) => renderLabel(props, highlightClub, labeledSet, labelSides, palette)}
           isAnimationActive={false}
           legendType="none"
         />

@@ -2,6 +2,7 @@ import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ReferenceLine, Resp
 import { getBadgeColor } from '../lib/clubColors'
 import { useIsDarkMode } from '../lib/theme'
 import { getChartPalette, TOOLTIP_BG, TOOLTIP_TEXT, TOOLTIP_MUTED, type ChartPalette } from '../lib/chartTheme'
+import { nudgeCollisions, labelWouldCollideRight } from '../lib/chartLayout'
 
 export type AttackDefensePoint = {
   shortName: string
@@ -10,10 +11,15 @@ export type AttackDefensePoint = {
   goalsAgainst: number
 }
 
+// plotGoalsFor/plotGoalsAgainst are the (possibly nudged) coordinates
+// actually handed to Recharts for positioning — goalsFor/goalsAgainst stay
+// the true values, read by the tooltip and the ranked table on /clubs.
+type PlottedPoint = AttackDefensePoint & { plotGoalsFor: number; plotGoalsAgainst: number }
+
 type ShapeProps = {
   cx?: number
   cy?: number
-  payload?: AttackDefensePoint
+  payload?: PlottedPoint
 }
 
 type Props = {
@@ -34,28 +40,33 @@ type Props = {
 // A background halo behind a label so it stays legible over the grid,
 // other dots, or a card's own background — width is a rough character-count
 // estimate (no canvas measurement available here), generous enough to never
-// clip.
+// clip. `align` flips which side of (x, y) the box grows from — used to
+// keep a label from covering a dot that happens to sit on its default side.
 function LabelWithHalo({
   x,
   y,
   text,
   bold,
+  align,
   palette,
 }: {
   x: number
   y: number
   text: string
   bold: boolean
+  align: 'start' | 'end'
   palette: ChartPalette
 }) {
   const fontSize = bold ? 10 : 9
-  const width = text.length * (fontSize * 0.64) + 8
+  const textWidth = text.length * (fontSize * 0.64) + 8
+  const rectX = align === 'start' ? x - 3 : x - textWidth + 3
+
   return (
     <g>
       <rect
-        x={x - 3}
+        x={rectX}
         y={y - fontSize - 1}
-        width={width}
+        width={textWidth}
         height={fontSize + 6}
         rx={3}
         fill={palette.labelBg}
@@ -63,18 +74,21 @@ function LabelWithHalo({
         strokeWidth={0.75}
         opacity={0.92}
       />
-      <text x={x} y={y} fontSize={fontSize} fontWeight={bold ? 600 : 500} fill={palette.pointLabel}>
+      <text x={x} y={y} textAnchor={align} fontSize={fontSize} fontWeight={bold ? 600 : 500} fill={palette.pointLabel}>
         {text}
       </text>
     </g>
   )
 }
 
-// Dots and labels are two separate Scatter layers (see below) rather than
-// one <g> per point, specifically so every label paints above every dot —
-// with a single layer, whichever point happened to come later in the data
-// array could render its dot on top of an earlier point's label whenever
-// two clubs' goals sat close enough to overlap.
+// Dots and labels are two separate Scatter layers rather than one <g> per
+// point, specifically so every label paints above every dot — with a
+// single layer, whichever point happened to come later in the data array
+// could render its dot on top of an earlier point's label whenever two
+// clubs' goals were close. The flip side of that fix is a label can now
+// cover a *different* point's dot instead if it extends toward it —
+// handled below by flipping that label to the other side when its default
+// position would land on another dot (see labelSides in the component).
 function renderDot(props: ShapeProps, highlightClub: string | undefined, palette: ChartPalette) {
   const { cx, cy, payload } = props
   if (cx === undefined || cy === undefined || !payload) return <g />
@@ -101,6 +115,7 @@ function renderLabel(
   props: ShapeProps,
   highlightClub: string | undefined,
   labeledClubs: Set<string>,
+  labelSides: Map<string, 'start' | 'end'>,
   palette: ChartPalette,
 ) {
   const { cx, cy, payload } = props
@@ -111,15 +126,11 @@ function renderLabel(
   if (!showLabel) return <g key={payload.shortName} />
 
   const radius = isHighlighted ? 8 : 6
+  const align = labelSides.get(payload.shortName.toUpperCase()) ?? 'start'
+  const x = align === 'start' ? cx + radius + 4 : cx - radius - 4
+
   return (
-    <LabelWithHalo
-      key={payload.shortName}
-      x={cx + radius + 4}
-      y={cy + 3}
-      text={payload.shortName}
-      bold={isHighlighted}
-      palette={palette}
-    />
+    <LabelWithHalo key={payload.shortName} x={x} y={cy + 3} text={payload.shortName} bold={isHighlighted} align={align} palette={palette} />
   )
 }
 
@@ -148,13 +159,37 @@ function AttackDefenseChart({ points, avgGoalsFor, avgGoalsAgainst, highlightClu
   const isMini = height < 260
   const labeledSet = new Set((labeledClubs ?? []).map((c) => c.toUpperCase()))
 
+  const xs = points.map((p) => p.goalsFor)
+  const ys = points.map((p) => p.goalsAgainst)
+  const xRange = Math.max(...xs) - Math.min(...xs) || 1
+  const yRange = Math.max(...ys) - Math.min(...ys) || 1
+
+  const positions = nudgeCollisions(
+    points.map((p) => ({ key: p.shortName, x: p.goalsFor, y: p.goalsAgainst })),
+    xRange,
+    yRange,
+  )
+  const plotPoints: PlottedPoint[] = points.map((p) => {
+    const pos = positions.get(p.shortName)!
+    return { ...p, plotGoalsFor: pos.x, plotGoalsAgainst: pos.y }
+  })
+
+  const labelSides = new Map<string, 'start' | 'end'>(
+    points
+      .filter((p) => labeledSet.has(p.shortName.toUpperCase()) || p.shortName.toUpperCase() === highlightClub?.toUpperCase())
+      .map((p) => [
+        p.shortName.toUpperCase(),
+        labelWouldCollideRight(p.shortName, positions, xRange, yRange) ? 'end' : 'start',
+      ]),
+  )
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ScatterChart margin={{ top: 8, right: isMini ? 8 : 16, bottom: isMini ? 4 : 24, left: isMini ? 4 : 8 }}>
         <CartesianGrid stroke={palette.grid} />
         <XAxis
           type="number"
-          dataKey="goalsFor"
+          dataKey="plotGoalsFor"
           name="Goals scored"
           tick={!isMini ? { fontSize: 10, fill: palette.tick } : false}
           axisLine={{ stroke: palette.axisLine }}
@@ -165,7 +200,7 @@ function AttackDefenseChart({ points, avgGoalsFor, avgGoalsAgainst, highlightClu
         />
         <YAxis
           type="number"
-          dataKey="goalsAgainst"
+          dataKey="plotGoalsAgainst"
           name="Goals conceded"
           reversed
           tick={!isMini ? { fontSize: 10, fill: palette.tick } : false}
@@ -182,15 +217,15 @@ function AttackDefenseChart({ points, avgGoalsFor, avgGoalsAgainst, highlightClu
         <ReferenceLine x={avgGoalsFor} stroke={palette.referenceLine} strokeDasharray="3 4" />
         <ReferenceLine y={avgGoalsAgainst} stroke={palette.referenceLine} strokeDasharray="3 4" />
         <Scatter
-          data={points}
-          dataKey="goalsAgainst"
+          data={plotPoints}
+          dataKey="plotGoalsAgainst"
           shape={(props: ShapeProps) => renderDot(props, highlightClub, palette)}
           isAnimationActive={false}
         />
         <Scatter
-          data={points}
-          dataKey="goalsAgainst"
-          shape={(props: ShapeProps) => renderLabel(props, highlightClub, labeledSet, palette)}
+          data={plotPoints}
+          dataKey="plotGoalsAgainst"
+          shape={(props: ShapeProps) => renderLabel(props, highlightClub, labeledSet, labelSides, palette)}
           isAnimationActive={false}
           legendType="none"
         />
