@@ -27,13 +27,10 @@ type Props = {
   slope: number
   intercept: number
   // short_name to emphasize (larger, club-colored, labeled) — every other
-  // point renders dimmed. Omit for the league-wide view on /clubs.
+  // point renders dimmed and unlabeled, identified by hovering instead.
+  // Omit for the league-wide view on /clubs, where every dot is equal and
+  // the write-up below the chart already names the standout clubs.
   highlightClub?: string
-  // short_names to always label even without a highlight (e.g. the
-  // overperformer/underperformer) — everything else is identified by
-  // hovering instead of a permanent label, since labeling all 20 clubs
-  // makes crowded clusters unreadable.
-  labeledClubs?: string[]
   height?: number
 }
 
@@ -115,7 +112,6 @@ function renderDot(props: ShapeProps, highlightClub: string | undefined, palette
 function renderLabel(
   props: ShapeProps,
   highlightClub: string | undefined,
-  labeledClubs: Set<string>,
   labelSides: Map<string, 'start' | 'end'>,
   palette: ChartPalette,
 ) {
@@ -123,16 +119,13 @@ function renderLabel(
   if (cx === undefined || cy === undefined || !payload) return <g />
 
   const isHighlighted = Boolean(highlightClub) && payload.shortName.toUpperCase() === highlightClub!.toUpperCase()
-  const showLabel = isHighlighted || (!highlightClub && labeledClubs.has(payload.shortName.toUpperCase()))
-  if (!showLabel) return <g key={payload.shortName} />
+  if (!isHighlighted) return <g key={payload.shortName} />
 
-  const radius = isHighlighted ? 8 : 6
+  const radius = 8 // matches the highlighted dot's own radius in renderDot
   const align = labelSides.get(payload.shortName.toUpperCase()) ?? 'start'
   const x = align === 'start' ? cx + radius + 4 : cx - radius - 4
 
-  return (
-    <LabelWithHalo key={payload.shortName} x={x} y={cy + 3} text={payload.shortName} bold={isHighlighted} align={align} palette={palette} />
-  )
+  return <LabelWithHalo key={payload.shortName} x={x} y={cy + 3} text={payload.shortName} bold align={align} palette={palette} />
 }
 
 function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: SpendPoint }[] }) {
@@ -153,11 +146,10 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: { paylo
 // with the league's OLS trend line. Shared between the full league-wide
 // chart on /clubs (no highlightClub) and the mini per-club chart on
 // /club/:slug (highlightClub set to that club's short_name).
-function SpendPerformanceChart({ points, slope, intercept, highlightClub, labeledClubs, height = 320 }: Props) {
+function SpendPerformanceChart({ points, slope, intercept, highlightClub, height = 320 }: Props) {
   const isDark = useIsDarkMode()
   const palette = getChartPalette(isDark)
   const isMini = height < 260
-  const labeledSet = new Set((labeledClubs ?? []).map((c) => c.toUpperCase()))
 
   const xs = points.map((p) => p.netSpendM)
   const ys = points.map((p) => p.points)
@@ -176,9 +168,11 @@ function SpendPerformanceChart({ points, slope, intercept, highlightClub, labele
     return { ...p, plotNetSpendM: pos.x, plotPoints: pos.y }
   })
 
+  // Only the highlighted club (mini per-club charts) ever gets a permanent
+  // label now — still worth checking it wouldn't land on a neighboring dot.
   const labelSides = new Map<string, 'start' | 'end'>(
     points
-      .filter((p) => labeledSet.has(p.shortName.toUpperCase()) || p.shortName.toUpperCase() === highlightClub?.toUpperCase())
+      .filter((p) => p.shortName.toUpperCase() === highlightClub?.toUpperCase())
       .map((p) => [
         p.shortName.toUpperCase(),
         labelWouldCollideRight(p.shortName, positions, xRange, yRange) ? 'end' : 'start',
@@ -235,7 +229,7 @@ function SpendPerformanceChart({ points, slope, intercept, highlightClub, labele
         <Scatter
           data={plotPoints}
           dataKey="plotPoints"
-          shape={(props: ShapeProps) => renderLabel(props, highlightClub, labeledSet, labelSides, palette)}
+          shape={(props: ShapeProps) => renderLabel(props, highlightClub, labelSides, palette)}
           isAnimationActive={false}
           legendType="none"
         />
