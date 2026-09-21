@@ -193,6 +193,8 @@ function formatMatchDate(utcDate: string): string {
   })
 }
 
+const FIXTURES_PREVIEW_COUNT = 5
+
 const POSITION_GROUPS: { type: number; heading: string }[] = [
   { type: 1, heading: 'Goalkeepers' },
   { type: 2, heading: 'Defenders' },
@@ -220,6 +222,7 @@ function ClubPage() {
   const [clubContent, setClubContent] = useState<ClubContent | null>(null)
   const [transfers, setTransfers] = useState<Transfer[]>([])
   const [upcomingMatches, setUpcomingMatches] = useState<NextMatch[]>([])
+  const [showAllFixtures, setShowAllFixtures] = useState(false)
   const [clubsByShortName, setClubsByShortName] = useState<Record<string, Club>>({})
   const [analytics, setAnalytics] = useState<ClubsAnalytics | null>(null)
   const [clubForm, setClubForm] = useState<ClubFormResponse | null>(null)
@@ -263,6 +266,7 @@ function ClubPage() {
     setClubContent(null)
     setTransfers([])
     setUpcomingMatches([])
+    setShowAllFixtures(false)
 
     const clubParam = `club=${encodeURIComponent(slug)}`
     const shortName = slug.toUpperCase()
@@ -672,34 +676,46 @@ function ClubPage() {
                 {upcomingMatches.length === 0 ? (
                   <p className="text-sm text-gray-600 dark:text-gray-400">No upcoming fixtures scheduled.</p>
                 ) : (
-                  <motion.div initial="hidden" animate="visible" variants={staggerContainer(0.05, 0.05)} className="space-y-3">
-                    {upcomingMatches.map((match) => (
-                      <MotionLink
-                        key={match.id}
-                        to={`/match/${match.id}`}
-                        variants={fadeUp}
-                        {...clubCardHover(clubColor)}
-                        className="flex items-center justify-between rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                        style={{ borderLeft: `3px solid ${clubColor}` }}
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <ClubCrest label={match.opponentShortName} crestUrl={match.opponentCrest} alt={match.opponentName} size="xs" />
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">
-                              {match.isHome ? 'vs' : '@'} {match.opponentName}
-                            </p>
-                            <p className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                              <CompetitionLogo name={match.competitionLabel} emblemUrl={match.competitionEmblem} size="sm" />
-                              · {match.isHome ? 'Home' : 'Away'}
-                            </p>
+                  <>
+                    <motion.div initial="hidden" animate="visible" variants={staggerContainer(0.05, 0.05)} className="space-y-3">
+                      {(showAllFixtures ? upcomingMatches : upcomingMatches.slice(0, FIXTURES_PREVIEW_COUNT)).map((match) => (
+                        <MotionLink
+                          key={match.id}
+                          to={`/match/${match.id}`}
+                          variants={fadeUp}
+                          {...clubCardHover(clubColor)}
+                          className="flex items-center justify-between rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                          style={{ borderLeft: `3px solid ${clubColor}` }}
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <ClubCrest label={match.opponentShortName} crestUrl={match.opponentCrest} alt={match.opponentName} size="xs" />
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">
+                                {match.isHome ? 'vs' : '@'} {match.opponentName}
+                              </p>
+                              <p className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+                                <CompetitionLogo name={match.competitionLabel} emblemUrl={match.competitionEmblem} size="sm" />
+                                · {match.isHome ? 'Home' : 'Away'}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        <p className="shrink-0 text-right text-sm text-gray-600 dark:text-gray-400">
-                          {formatMatchDate(match.utcDate)}
-                        </p>
-                      </MotionLink>
-                    ))}
-                  </motion.div>
+                          <p className="shrink-0 text-right text-sm text-gray-600 dark:text-gray-400">
+                            {formatMatchDate(match.utcDate)}
+                          </p>
+                        </MotionLink>
+                      ))}
+                    </motion.div>
+
+                    {!showAllFixtures && upcomingMatches.length > FIXTURES_PREVIEW_COUNT && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAllFixtures(true)}
+                        className="mt-3 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                      >
+                        Show all {upcomingMatches.length} fixtures
+                      </button>
+                    )}
+                  </>
                 )}
               </section>
             </div>
