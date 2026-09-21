@@ -620,42 +620,6 @@ function ClubPage() {
           {activeTab === 'matches' && (
             <div className="space-y-8">
               <section>
-                <SectionHeading color={clubColor}>Upcoming fixtures</SectionHeading>
-                {upcomingMatches.length === 0 ? (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">No upcoming fixtures scheduled.</p>
-                ) : (
-                  <motion.div initial="hidden" animate="visible" variants={staggerContainer(0.05, 0.05)} className="space-y-3">
-                    {upcomingMatches.map((match) => (
-                      <MotionLink
-                        key={match.id}
-                        to={`/match/${match.id}`}
-                        variants={fadeUp}
-                        {...clubCardHover(clubColor)}
-                        className="flex items-center justify-between rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                        style={{ borderLeft: `3px solid ${clubColor}` }}
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <ClubCrest label={match.opponentShortName} crestUrl={match.opponentCrest} alt={match.opponentName} size="xs" />
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">
-                              {match.isHome ? 'vs' : '@'} {match.opponentName}
-                            </p>
-                            <p className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                              <CompetitionLogo name={match.competitionLabel} emblemUrl={match.competitionEmblem} size="sm" />
-                              · {match.isHome ? 'Home' : 'Away'}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="shrink-0 text-right text-sm text-gray-600 dark:text-gray-400">
-                          {formatMatchDate(match.utcDate)}
-                        </p>
-                      </MotionLink>
-                    ))}
-                  </motion.div>
-                )}
-              </section>
-
-              <section>
                 <SectionHeading color={clubColor}>Recent results</SectionHeading>
                 {recentResults.length === 0 ? (
                   <p className="text-sm text-gray-600 dark:text-gray-400">No recent results yet.</p>
@@ -699,6 +663,42 @@ function ClubPage() {
                         </motion.div>
                       )
                     })}
+                  </motion.div>
+                )}
+              </section>
+
+              <section>
+                <SectionHeading color={clubColor}>Upcoming fixtures</SectionHeading>
+                {upcomingMatches.length === 0 ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">No upcoming fixtures scheduled.</p>
+                ) : (
+                  <motion.div initial="hidden" animate="visible" variants={staggerContainer(0.05, 0.05)} className="space-y-3">
+                    {upcomingMatches.map((match) => (
+                      <MotionLink
+                        key={match.id}
+                        to={`/match/${match.id}`}
+                        variants={fadeUp}
+                        {...clubCardHover(clubColor)}
+                        className="flex items-center justify-between rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                        style={{ borderLeft: `3px solid ${clubColor}` }}
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <ClubCrest label={match.opponentShortName} crestUrl={match.opponentCrest} alt={match.opponentName} size="xs" />
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {match.isHome ? 'vs' : '@'} {match.opponentName}
+                            </p>
+                            <p className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+                              <CompetitionLogo name={match.competitionLabel} emblemUrl={match.competitionEmblem} size="sm" />
+                              · {match.isHome ? 'Home' : 'Away'}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="shrink-0 text-right text-sm text-gray-600 dark:text-gray-400">
+                          {formatMatchDate(match.utcDate)}
+                        </p>
+                      </MotionLink>
+                    ))}
                   </motion.div>
                 )}
               </section>
