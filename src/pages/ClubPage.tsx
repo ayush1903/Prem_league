@@ -355,12 +355,6 @@ function ClubPage() {
     return acc
   }, {})
 
-  const squadSize = players.length
-  const goalkeeperCount = (playersByType[1] ?? []).length
-  const defenderCount = (playersByType[2] ?? []).length
-  const midfielderCount = (playersByType[3] ?? []).length
-  const forwardCount = (playersByType[4] ?? []).length
-
   const nextMatch = upcomingMatches[0] ?? null
 
   const formLetters = clubForm?.form[badgeLabel] ?? []
@@ -471,70 +465,21 @@ function ClubPage() {
                 </motion.section>
               )}
 
-              <motion.div
-                initial="hidden"
-                animate="visible"
-                variants={staggerContainer(0.06, 0.1)}
-                className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
-              >
+              {formLetters.length > 0 && (
                 <motion.div
+                  initial="hidden"
+                  animate="visible"
                   variants={fadeUp}
-                  {...clubCardHover(clubColor)}
-                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                  style={{ borderLeft: `3px solid ${clubColor}` }}
+                  className="flex items-center gap-2"
                 >
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Squad Size</p>
-                  <p className="font-display text-2xl font-extrabold">{squadSize}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Form</p>
+                  <div className="flex items-center gap-1">
+                    {formLetters.map((result, index) => (
+                      <FormIcon key={index} result={result} size="sm" />
+                    ))}
+                  </div>
                 </motion.div>
-                <motion.div
-                  variants={fadeUp}
-                  {...clubCardHover(clubColor)}
-                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                  style={{ borderLeft: `3px solid ${clubColor}` }}
-                >
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Goalkeepers</p>
-                  <p className="font-display text-2xl font-extrabold">{goalkeeperCount}</p>
-                </motion.div>
-                <motion.div
-                  variants={fadeUp}
-                  {...clubCardHover(clubColor)}
-                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                  style={{ borderLeft: `3px solid ${clubColor}` }}
-                >
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Defenders</p>
-                  <p className="font-display text-2xl font-extrabold">{defenderCount}</p>
-                </motion.div>
-                <motion.div
-                  variants={fadeUp}
-                  {...clubCardHover(clubColor)}
-                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                  style={{ borderLeft: `3px solid ${clubColor}` }}
-                >
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Midfielders</p>
-                  <p className="font-display text-2xl font-extrabold">{midfielderCount}</p>
-                </motion.div>
-                <motion.div
-                  variants={fadeUp}
-                  {...clubCardHover(clubColor)}
-                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                  style={{ borderLeft: `3px solid ${clubColor}` }}
-                >
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Forwards</p>
-                  <p className="font-display text-2xl font-extrabold">{forwardCount}</p>
-                </motion.div>
-                <motion.div
-                  variants={fadeUp}
-                  {...clubCardHover(clubColor)}
-                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                  style={{ borderLeft: `3px solid ${clubColor}` }}
-                >
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Spend</p>
-                  <p className="text-lg font-bold">Net: {clubContent?.net_spend ?? '—'}</p>
-                  {clubContent?.gross_spend && (
-                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Gross: {clubContent.gross_spend}</p>
-                  )}
-                </motion.div>
-              </motion.div>
+              )}
 
               {analytics && (
                 <section>
