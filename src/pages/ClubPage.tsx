@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer, clubCardHover } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
@@ -8,6 +8,7 @@ import { POSITION_LABELS, isUnavailable, getStatusBadge, type Player } from '../
 import ClubCrest from '../components/ClubCrest'
 import ClubHero from '../components/ClubHero'
 import CompetitionLogo from '../components/CompetitionLogo'
+import { FormIcon, type FormResult } from '../components/FormStrip'
 import SectionHeading from '../components/SectionHeading'
 import SiteHeader from '../components/SiteHeader'
 import SpendPerformanceChart, { type SpendPoint } from '../components/SpendPerformanceChart'
@@ -92,12 +93,42 @@ type ClubsAnalytics = {
   }
 }
 
+// Same last-5 window as club-form's `form` letters, keeping full match
+// details instead — index-aligned with `form` (same left-padding), so
+// pairing formLetters[i] with results[i] gives the outcome for that match.
+type MatchResultDetail = {
+  opponent: string | null
+  opponentTla: string | null
+  score: string | null
+  date: string | null
+  competition: string | null
+  isHome: boolean
+}
+
+type ClubFormResponse = {
+  form: Record<string, FormResult[]>
+  results: Record<string, (MatchResultDetail | null)[]>
+}
+
 type Status = 'loading' | 'ready' | 'not-found' | 'error'
 
 const FIXTURE_COMPETITIONS: { code: string; label: string }[] = [
   { code: 'PL', label: 'Premier League' },
   { code: 'CL', label: 'Champions League' },
 ]
+
+const TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'matches', label: 'Matches' },
+  { id: 'squad', label: 'Squad' },
+  { id: 'profile', label: 'Profile' },
+] as const
+
+type TabId = (typeof TABS)[number]['id']
+
+function isTabId(value: string | null): value is TabId {
+  return TABS.some((tab) => tab.id === value)
+}
 
 function extractClubMatches(matches: Match[], competitionLabel: string, shortName: string): NextMatch[] {
   return matches.flatMap((match): NextMatch[] => {
@@ -183,13 +214,29 @@ function ClubNotFoundPage() {
 
 function ClubPage() {
   const { slug } = useParams<{ slug: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [status, setStatus] = useState<Status>('loading')
   const [team, setTeam] = useState<TeamResponse | null>(null)
   const [clubContent, setClubContent] = useState<ClubContent | null>(null)
   const [transfers, setTransfers] = useState<Transfer[]>([])
-  const [nextMatch, setNextMatch] = useState<NextMatch | null>(null)
-  const [crest, setCrest] = useState<string | null>(null)
+  const [upcomingMatches, setUpcomingMatches] = useState<NextMatch[]>([])
+  const [clubsByShortName, setClubsByShortName] = useState<Record<string, Club>>({})
   const [analytics, setAnalytics] = useState<ClubsAnalytics | null>(null)
+  const [clubForm, setClubForm] = useState<ClubFormResponse | null>(null)
+
+  const tabParam = searchParams.get('tab')
+  const activeTab: TabId = isTabId(tabParam) ? tabParam : 'overview'
+
+  function handleTabChange(tab: TabId) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('tab', tab)
+        return next
+      },
+      { replace: true },
+    )
+  }
 
   // League-wide, not per-club — fetched once rather than inside the
   // per-slug effect below (its data doesn't change when slug changes).
@@ -197,6 +244,11 @@ function ClubPage() {
     fetch('/api/clubs-analytics')
       .then((res) => res.json())
       .then((data) => setAnalytics(data))
+      .catch(() => {})
+
+    fetch('/api/club-form')
+      .then((res) => res.json())
+      .then((data) => setClubForm({ form: data.form ?? {}, results: data.results ?? {} }))
       .catch(() => {})
   }, [])
 
@@ -210,8 +262,7 @@ function ClubPage() {
     setTeam(null)
     setClubContent(null)
     setTransfers([])
-    setNextMatch(null)
-    setCrest(null)
+    setUpcomingMatches([])
 
     const clubParam = `club=${encodeURIComponent(slug)}`
     const shortName = slug.toUpperCase()
@@ -221,8 +272,7 @@ function ClubPage() {
       .then((res) => res.json())
       .then((data) => {
         const clubs: Club[] = data.clubs ?? []
-        const club = clubs.find((c) => c.short_name.toUpperCase() === shortName)
-        setCrest(club?.crest ?? null)
+        setClubsByShortName(Object.fromEntries(clubs.map((c) => [c.short_name.toUpperCase(), c])))
       })
       .catch(() => {})
 
@@ -264,10 +314,10 @@ function ClubPage() {
           .catch(() => []),
       ),
     ).then((matchGroups) => {
-      const soonest = matchGroups
+      const sorted = matchGroups
         .flat()
-        .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime())[0]
-      setNextMatch(soonest ?? null)
+        .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime())
+      setUpcomingMatches(sorted)
     })
   }, [slug])
 
@@ -293,6 +343,7 @@ function ClubPage() {
 
   const badgeLabel = (slug ?? '').toUpperCase()
   const clubColor = getBadgeColor(badgeLabel)
+  const crest = clubsByShortName[badgeLabel]?.crest ?? null
   const players = (team.players ?? []).filter((player) => !isUnavailable(player))
   const playersByType = players.reduce<Record<number, Player[]>>((acc, player) => {
     acc[player.element_type] = acc[player.element_type] ?? []
@@ -305,6 +356,15 @@ function ClubPage() {
   const defenderCount = (playersByType[2] ?? []).length
   const midfielderCount = (playersByType[3] ?? []).length
   const forwardCount = (playersByType[4] ?? []).length
+
+  const nextMatch = upcomingMatches[0] ?? null
+
+  const formLetters = clubForm?.form[badgeLabel] ?? []
+  const matchDetails = clubForm?.results[badgeLabel] ?? []
+  const recentResults = matchDetails
+    .map((detail, index) => (detail ? { detail, outcome: formLetters[index] ?? null } : null))
+    .filter((entry): entry is { detail: MatchResultDetail; outcome: FormResult } => entry !== null)
+    .reverse()
 
   return (
     <div className="min-h-screen bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
@@ -358,240 +418,413 @@ function ClubPage() {
           </MotionLink>
         )}
 
-        {clubContent && (clubContent.club_summary || clubContent.playstyle_summary) && (
-          <motion.section
-            initial="hidden"
-            animate="visible"
-            variants={fadeUp}
-            transition={{ duration: 0.25, ease: 'easeOut', delay: 0.1 }}
-            className="mt-8 space-y-4 rounded-lg bg-gray-100 p-5 dark:bg-gray-900"
-          >
-            {clubContent.club_summary && (
-              <p className="text-gray-800 dark:text-gray-200">{clubContent.club_summary}</p>
-            )}
-            {clubContent.playstyle_summary && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">{clubContent.playstyle_summary}</p>
-            )}
-          </motion.section>
-        )}
+        <nav role="tablist" aria-label="Club sections" className="mt-8 flex gap-6 border-b border-gray-200 dark:border-gray-800">
+          {TABS.map((tab) => {
+            const isActive = tab.id === activeTab
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => handleTabChange(tab.id)}
+                className={`relative -mb-px pb-3 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'text-gray-900 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+              >
+                {tab.label}
+                {isActive && (
+                  <motion.span
+                    layoutId="club-tab-indicator"
+                    className="absolute inset-x-0 -bottom-px h-0.5 rounded-full"
+                    style={{ backgroundColor: clubColor }}
+                  />
+                )}
+              </button>
+            )
+          })}
+        </nav>
 
-        {transfers.length > 0 && (
-          <section className="mt-8">
-            <SectionHeading color={clubColor}>Transfers</SectionHeading>
-            <motion.div
-              initial="hidden"
-              animate="visible"
-              variants={staggerContainer(0.06, 0.15)}
-              className="grid grid-cols-1 gap-3 sm:grid-cols-2"
-            >
-              {transfers.map((transfer, index) => (
+        <div className="mt-6">
+          {activeTab === 'overview' && (
+            <div className="space-y-8">
+              {clubContent && (clubContent.club_summary || clubContent.playstyle_summary) && (
+                <motion.section
+                  initial="hidden"
+                  animate="visible"
+                  variants={fadeUp}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className="space-y-4 rounded-lg bg-gray-100 p-5 dark:bg-gray-900"
+                >
+                  {clubContent.club_summary && (
+                    <p className="text-gray-800 dark:text-gray-200">{clubContent.club_summary}</p>
+                  )}
+                  {clubContent.playstyle_summary && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{clubContent.playstyle_summary}</p>
+                  )}
+                </motion.section>
+              )}
+
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={staggerContainer(0.06, 0.1)}
+                className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
+              >
                 <motion.div
-                  key={`${transfer.player_name}-${index}`}
                   variants={fadeUp}
                   {...clubCardHover(clubColor)}
                   className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
                   style={{ borderLeft: `3px solid ${clubColor}` }}
                 >
-                  <p className="font-medium">{transfer.player_name}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {transfer.type === 'in' ? 'In' : transfer.type === 'out' ? 'Out' : 'Rumour'}
-                    {transfer.fee ? ` · ${transfer.fee}` : ''}
-                  </p>
-                  {transfer.source_name && (
-                    <p className="mt-1 text-xs text-gray-500">Source: {transfer.source_name}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Squad Size</p>
+                  <p className="font-display text-2xl font-extrabold">{squadSize}</p>
+                </motion.div>
+                <motion.div
+                  variants={fadeUp}
+                  {...clubCardHover(clubColor)}
+                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                  style={{ borderLeft: `3px solid ${clubColor}` }}
+                >
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Goalkeepers</p>
+                  <p className="font-display text-2xl font-extrabold">{goalkeeperCount}</p>
+                </motion.div>
+                <motion.div
+                  variants={fadeUp}
+                  {...clubCardHover(clubColor)}
+                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                  style={{ borderLeft: `3px solid ${clubColor}` }}
+                >
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Defenders</p>
+                  <p className="font-display text-2xl font-extrabold">{defenderCount}</p>
+                </motion.div>
+                <motion.div
+                  variants={fadeUp}
+                  {...clubCardHover(clubColor)}
+                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                  style={{ borderLeft: `3px solid ${clubColor}` }}
+                >
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Midfielders</p>
+                  <p className="font-display text-2xl font-extrabold">{midfielderCount}</p>
+                </motion.div>
+                <motion.div
+                  variants={fadeUp}
+                  {...clubCardHover(clubColor)}
+                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                  style={{ borderLeft: `3px solid ${clubColor}` }}
+                >
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Forwards</p>
+                  <p className="font-display text-2xl font-extrabold">{forwardCount}</p>
+                </motion.div>
+                <motion.div
+                  variants={fadeUp}
+                  {...clubCardHover(clubColor)}
+                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                  style={{ borderLeft: `3px solid ${clubColor}` }}
+                >
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Spend</p>
+                  <p className="text-lg font-bold">Net: {clubContent?.net_spend ?? '—'}</p>
+                  {clubContent?.gross_spend && (
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Gross: {clubContent.gross_spend}</p>
                   )}
                 </motion.div>
-              ))}
-            </motion.div>
-          </section>
-        )}
+              </motion.div>
 
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer(0.06, 0.25)}
-          className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6"
-        >
-          <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
-          >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Squad Size</p>
-            <p className="font-display text-2xl font-extrabold">{squadSize}</p>
-          </motion.div>
-          <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
-          >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Goalkeepers</p>
-            <p className="font-display text-2xl font-extrabold">{goalkeeperCount}</p>
-          </motion.div>
-          <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
-          >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Defenders</p>
-            <p className="font-display text-2xl font-extrabold">{defenderCount}</p>
-          </motion.div>
-          <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
-          >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Midfielders</p>
-            <p className="font-display text-2xl font-extrabold">{midfielderCount}</p>
-          </motion.div>
-          <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
-          >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Forwards</p>
-            <p className="font-display text-2xl font-extrabold">{forwardCount}</p>
-          </motion.div>
-          <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
-          >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Spend</p>
-            <p className="text-lg font-bold">Net: {clubContent?.net_spend ?? '—'}</p>
-            {clubContent?.gross_spend && (
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Gross: {clubContent.gross_spend}</p>
-            )}
-          </motion.div>
-        </motion.div>
+              {analytics && (
+                <section>
+                  <SectionHeading color={clubColor}>{team.team} vs. the league</SectionHeading>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {(() => {
+                      const own = analytics.spendVsPerformance.points.find((p) => p.shortName.toUpperCase() === badgeLabel)
+                      if (!own) return null
 
-        {analytics && (
-          <section className="mt-8">
-            <SectionHeading color={clubColor}>{team.team} vs. the league</SectionHeading>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {(() => {
-                const own = analytics.spendVsPerformance.points.find((p) => p.shortName.toUpperCase() === badgeLabel)
-                if (!own) return null
+                      const rank =
+                        [...analytics.spendVsPerformance.points]
+                          .sort((a, b) => b.netSpendM - a.netSpendM)
+                          .findIndex((p) => p.shortName === own.shortName) + 1
 
-                const rank =
-                  [...analytics.spendVsPerformance.points]
-                    .sort((a, b) => b.netSpendM - a.netSpendM)
-                    .findIndex((p) => p.shortName === own.shortName) + 1
+                      return (
+                        <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900" style={{ borderLeft: `3px solid ${clubColor}` }}>
+                          <p className="mb-2 text-sm font-semibold">Spend vs. performance</p>
+                          <SpendPerformanceChart
+                            points={analytics.spendVsPerformance.points}
+                            slope={analytics.spendVsPerformance.slope}
+                            intercept={analytics.spendVsPerformance.intercept}
+                            highlightClub={badgeLabel}
+                            height={200}
+                          />
+                          <div className="mt-2 flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: clubColor }} />
+                              {team.team}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-700" />
+                              other clubs
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                            <strong>{team.team}:</strong> {ordinal(rank)}-highest net spend (£{own.netSpendM.toFixed(1)}m),{' '}
+                            {own.points} pts — {own.residual >= 0 ? `+${own.residual.toFixed(1)} above` : `${own.residual.toFixed(1)} below`}{' '}
+                            what that spend predicts.
+                          </p>
+                        </div>
+                      )
+                    })()}
 
-                return (
-                  <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900" style={{ borderLeft: `3px solid ${clubColor}` }}>
-                    <p className="mb-2 text-sm font-semibold">Spend vs. performance</p>
-                    <SpendPerformanceChart
-                      points={analytics.spendVsPerformance.points}
-                      slope={analytics.spendVsPerformance.slope}
-                      intercept={analytics.spendVsPerformance.intercept}
-                      highlightClub={badgeLabel}
-                      height={200}
-                    />
-                    <div className="mt-2 flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: clubColor }} />
-                        {team.team}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-700" />
-                        other clubs
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-                      <strong>{team.team}:</strong> {ordinal(rank)}-highest net spend (£{own.netSpendM.toFixed(1)}m),{' '}
-                      {own.points} pts — {own.residual >= 0 ? `+${own.residual.toFixed(1)} above` : `${own.residual.toFixed(1)} below`}{' '}
-                      what that spend predicts.
-                    </p>
+                    {(() => {
+                      const own = analytics.attackVsDefense.points.find((p) => p.shortName.toUpperCase() === badgeLabel)
+                      if (!own) return null
+
+                      const rank =
+                        [...analytics.attackVsDefense.points]
+                          .sort((a, b) => b.balanceScore - a.balanceScore)
+                          .findIndex((p) => p.shortName === own.shortName) + 1
+
+                      return (
+                        <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900" style={{ borderLeft: `3px solid ${clubColor}` }}>
+                          <p className="mb-2 text-sm font-semibold">Attack vs. defense</p>
+                          <AttackDefenseChart
+                            points={analytics.attackVsDefense.points}
+                            avgGoalsFor={analytics.attackVsDefense.avgGoalsFor}
+                            avgGoalsAgainst={analytics.attackVsDefense.avgGoalsAgainst}
+                            highlightClub={badgeLabel}
+                            height={200}
+                          />
+                          <div className="mt-2 flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: clubColor }} />
+                              {team.team}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-700" />
+                              other clubs
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+                            <strong>{team.team}:</strong> {own.balanceScore >= 0 ? '+' : ''}
+                            {own.balanceScore.toFixed(0)} balance vs. league average — {ordinal(rank)}-furthest into the
+                            strong-attack/strong-defense quadrant.
+                          </p>
+                        </div>
+                      )
+                    })()}
                   </div>
-                )
-              })()}
-
-              {(() => {
-                const own = analytics.attackVsDefense.points.find((p) => p.shortName.toUpperCase() === badgeLabel)
-                if (!own) return null
-
-                const rank =
-                  [...analytics.attackVsDefense.points]
-                    .sort((a, b) => b.balanceScore - a.balanceScore)
-                    .findIndex((p) => p.shortName === own.shortName) + 1
-
-                return (
-                  <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900" style={{ borderLeft: `3px solid ${clubColor}` }}>
-                    <p className="mb-2 text-sm font-semibold">Attack vs. defense</p>
-                    <AttackDefenseChart
-                      points={analytics.attackVsDefense.points}
-                      avgGoalsFor={analytics.attackVsDefense.avgGoalsFor}
-                      avgGoalsAgainst={analytics.attackVsDefense.avgGoalsAgainst}
-                      highlightClub={badgeLabel}
-                      height={200}
-                    />
-                    <div className="mt-2 flex items-center gap-3 text-[11px] text-gray-500 dark:text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: clubColor }} />
-                        {team.team}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-700" />
-                        other clubs
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-                      <strong>{team.team}:</strong> {own.balanceScore >= 0 ? '+' : ''}
-                      {own.balanceScore.toFixed(0)} balance vs. league average — {ordinal(rank)}-furthest into the
-                      strong-attack/strong-defense quadrant.
-                    </p>
-                  </div>
-                )
-              })()}
+                </section>
+              )}
             </div>
-          </section>
-        )}
+          )}
 
-        <div className="mt-10 space-y-8">
-          {POSITION_GROUPS.map((group, groupIndex) => {
-            const groupPlayers = playersByType[group.type] ?? []
-            if (groupPlayers.length === 0) return null
-
-            return (
-              <section key={group.type}>
-                <SectionHeading color={clubColor}>{group.heading}</SectionHeading>
-                <motion.div
-                  initial="hidden"
-                  animate="visible"
-                  variants={staggerContainer(0.05, 0.35 + groupIndex * 0.1)}
-                  className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
-                >
-                  {groupPlayers.map((player, index) => {
-                    const statusBadge = getStatusBadge(player)
-
-                    return (
+          {activeTab === 'matches' && (
+            <div className="space-y-8">
+              <section>
+                <SectionHeading color={clubColor}>Upcoming fixtures</SectionHeading>
+                {upcomingMatches.length === 0 ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">No upcoming fixtures scheduled.</p>
+                ) : (
+                  <motion.div initial="hidden" animate="visible" variants={staggerContainer(0.05, 0.05)} className="space-y-3">
+                    {upcomingMatches.map((match) => (
                       <MotionLink
-                        key={`${player.first_name}-${player.second_name}-${index}`}
-                        to={`/club/${slug}/player/${player.id}`}
+                        key={match.id}
+                        to={`/match/${match.id}`}
                         variants={fadeUp}
                         {...clubCardHover(clubColor)}
-                        className="block rounded-lg bg-gray-100 p-3 dark:bg-gray-900"
+                        className="flex items-center justify-between rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
                         style={{ borderLeft: `3px solid ${clubColor}` }}
                       >
-                        <p className="font-medium">
-                          {player.first_name} {player.second_name}
+                        <div className="flex min-w-0 items-center gap-3">
+                          <ClubCrest label={match.opponentShortName} crestUrl={match.opponentCrest} alt={match.opponentName} size="xs" />
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {match.isHome ? 'vs' : '@'} {match.opponentName}
+                            </p>
+                            <p className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+                              <CompetitionLogo name={match.competitionLabel} emblemUrl={match.competitionEmblem} size="sm" />
+                              · {match.isHome ? 'Home' : 'Away'}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="shrink-0 text-right text-sm text-gray-600 dark:text-gray-400">
+                          {formatMatchDate(match.utcDate)}
                         </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{POSITION_LABELS[player.element_type]}</p>
-                        {statusBadge && <span className={statusBadge.className}>{statusBadge.label}</span>}
                       </MotionLink>
-                    )
-                  })}
-                </motion.div>
+                    ))}
+                  </motion.div>
+                )}
               </section>
-            )
-          })}
+
+              <section>
+                <SectionHeading color={clubColor}>Recent results</SectionHeading>
+                {recentResults.length === 0 ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">No recent results yet.</p>
+                ) : (
+                  <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    variants={staggerContainer(0.05, 0.1)}
+                    className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                  >
+                    {recentResults.map(({ detail, outcome }, index) => {
+                      const opponentCrest = detail.opponentTla ? clubsByShortName[detail.opponentTla]?.crest ?? null : null
+
+                      return (
+                        <motion.div
+                          key={`${detail.opponentTla ?? detail.opponent ?? 'unknown'}-${detail.date ?? index}`}
+                          variants={fadeUp}
+                          {...clubCardHover(clubColor)}
+                          className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                          style={{ borderLeft: `3px solid ${clubColor}` }}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <ClubCrest
+                                label={detail.opponentTla ?? '??'}
+                                crestUrl={opponentCrest}
+                                alt={detail.opponent ?? undefined}
+                                size="xs"
+                              />
+                              <p className="truncate text-sm font-medium">
+                                {detail.isHome ? 'vs' : '@'} {detail.opponent ?? 'Unknown opponent'}
+                              </p>
+                            </div>
+                            <FormIcon result={outcome} size="md" />
+                          </div>
+                          <p className="mt-2 font-display text-xl font-extrabold">{detail.score ?? '—'}</p>
+                          <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                            {detail.competition ?? 'Premier League'} · {detail.isHome ? 'Home' : 'Away'}
+                          </p>
+                          {detail.date && <p className="mt-1 text-xs text-gray-500">{formatMatchDate(detail.date)}</p>}
+                        </motion.div>
+                      )
+                    })}
+                  </motion.div>
+                )}
+              </section>
+            </div>
+          )}
+
+          {activeTab === 'squad' && (
+            <div className="space-y-8">
+              {POSITION_GROUPS.map((group, groupIndex) => {
+                const groupPlayers = playersByType[group.type] ?? []
+                if (groupPlayers.length === 0) return null
+
+                return (
+                  <section key={group.type}>
+                    <SectionHeading color={clubColor}>{group.heading}</SectionHeading>
+                    <motion.div
+                      initial="hidden"
+                      animate="visible"
+                      variants={staggerContainer(0.05, groupIndex * 0.1)}
+                      className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4"
+                    >
+                      {groupPlayers.map((player, index) => {
+                        const statusBadge = getStatusBadge(player)
+
+                        return (
+                          <MotionLink
+                            key={`${player.first_name}-${player.second_name}-${index}`}
+                            to={`/club/${slug}/player/${player.id}`}
+                            variants={fadeUp}
+                            {...clubCardHover(clubColor)}
+                            className="block rounded-lg bg-gray-100 p-3 dark:bg-gray-900"
+                            style={{ borderLeft: `3px solid ${clubColor}` }}
+                          >
+                            <p className="font-medium">
+                              {player.first_name} {player.second_name}
+                            </p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{POSITION_LABELS[player.element_type]}</p>
+                            {statusBadge && <span className={statusBadge.className}>{statusBadge.label}</span>}
+                          </MotionLink>
+                        )
+                      })}
+                    </motion.div>
+                  </section>
+                )
+              })}
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className="space-y-8">
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={staggerContainer(0.06, 0)}
+                className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+              >
+                <motion.div
+                  variants={fadeUp}
+                  {...clubCardHover(clubColor)}
+                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                  style={{ borderLeft: `3px solid ${clubColor}` }}
+                >
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Manager</p>
+                  <p className="font-display text-lg font-extrabold">{clubContent?.manager ?? '—'}</p>
+                </motion.div>
+                <motion.div
+                  variants={fadeUp}
+                  {...clubCardHover(clubColor)}
+                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                  style={{ borderLeft: `3px solid ${clubColor}` }}
+                >
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Formation</p>
+                  <p className="font-display text-lg font-extrabold">{clubContent?.formation ?? '—'}</p>
+                </motion.div>
+                <motion.div
+                  variants={fadeUp}
+                  {...clubCardHover(clubColor)}
+                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                  style={{ borderLeft: `3px solid ${clubColor}` }}
+                >
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Net spend</p>
+                  <p className="font-display text-lg font-extrabold">{clubContent?.net_spend ?? '—'}</p>
+                </motion.div>
+                <motion.div
+                  variants={fadeUp}
+                  {...clubCardHover(clubColor)}
+                  className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                  style={{ borderLeft: `3px solid ${clubColor}` }}
+                >
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Gross spend</p>
+                  <p className="font-display text-lg font-extrabold">{clubContent?.gross_spend ?? '—'}</p>
+                </motion.div>
+              </motion.div>
+
+              {transfers.length > 0 && (
+                <section>
+                  <SectionHeading color={clubColor}>Transfers</SectionHeading>
+                  <motion.div
+                    initial="hidden"
+                    animate="visible"
+                    variants={staggerContainer(0.06, 0.1)}
+                    className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+                  >
+                    {transfers.map((transfer, index) => (
+                      <motion.div
+                        key={`${transfer.player_name}-${index}`}
+                        variants={fadeUp}
+                        {...clubCardHover(clubColor)}
+                        className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                        style={{ borderLeft: `3px solid ${clubColor}` }}
+                      >
+                        <p className="font-medium">{transfer.player_name}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {transfer.type === 'in' ? 'In' : transfer.type === 'out' ? 'Out' : 'Rumour'}
+                          {transfer.fee ? ` · ${transfer.fee}` : ''}
+                        </p>
+                        {transfer.source_name && (
+                          <p className="mt-1 text-xs text-gray-500">Source: {transfer.source_name}</p>
+                        )}
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </section>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

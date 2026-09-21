@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
 import ClubCrest from '../components/ClubCrest'
+import FormStrip, { type FormResult } from '../components/FormStrip'
 import SiteHeader from '../components/SiteHeader'
 
 // Simplified standard convention: top 4 = Champions League, 5th-6th =
@@ -43,59 +44,6 @@ type StandingsGroup = {
 
 type StandingsPayload = {
   standings: StandingsGroup[]
-}
-
-type FormResult = 'W' | 'D' | 'L' | null
-
-const RESULT_STYLES: Record<'W' | 'D' | 'L', { bg: string; fg: string; label: string }> = {
-  W: { bg: '#16a34a', fg: '#ffffff', label: 'Win' },
-  D: { bg: '#9CA3AF', fg: '#ffffff', label: 'Draw' },
-  L: { bg: '#dc2626', fg: '#ffffff', label: 'Loss' },
-}
-
-function FormIcon({ result }: { result: FormResult }) {
-  if (result === null) {
-    return (
-      <span
-        aria-label="Not yet played"
-        title="Not yet played"
-        className="inline-block h-3.5 w-3.5 shrink-0 rounded-full border border-gray-300 dark:border-gray-700"
-      />
-    )
-  }
-
-  const { bg, fg, label } = RESULT_STYLES[result]
-
-  return (
-    <span
-      aria-label={label}
-      title={label}
-      className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold leading-none"
-      style={{ backgroundColor: bg, color: fg }}
-    >
-      {result === 'W' && (
-        <svg viewBox="0 0 12 12" className="h-2 w-2" fill="none" stroke={fg} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2.5 6.5L5 9L9.5 3.5" />
-        </svg>
-      )}
-      {result === 'D' && <span className="block h-[2px] w-1.5 rounded-full" style={{ backgroundColor: fg }} />}
-      {result === 'L' && (
-        <svg viewBox="0 0 12 12" className="h-2 w-2" fill="none" stroke={fg} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 3L9 9M9 3L3 9" />
-        </svg>
-      )}
-    </span>
-  )
-}
-
-function FormStrip({ results }: { results: FormResult[] }) {
-  return (
-    <div className="flex items-center justify-end gap-1">
-      {results.map((result, i) => (
-        <FormIcon key={i} result={result} />
-      ))}
-    </div>
-  )
 }
 
 // Zone boundaries are in terms of true table slots (1st, 2nd, ...), but
