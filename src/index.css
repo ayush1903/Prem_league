@@ -2,6 +2,12 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Safety net: no single element should ever be able to force page-wide
+   horizontal scroll/overflow again. */
+html, body {
+  overflow-x: hidden;
+}
+
 @theme {
   --font-display: 'Barlow Condensed', ui-sans-serif, system-ui, sans-serif;
   --font-body: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
