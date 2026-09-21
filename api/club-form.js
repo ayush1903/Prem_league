@@ -45,6 +45,42 @@ function outcomeFor(match, normalizedTla) {
   return null
 }
 
+function matchDetailFor(match, normalizedTla) {
+  const isHome = normalizeTla(match.homeTeam?.tla ?? '').toUpperCase() === normalizedTla
+  const opponentTeam = isHome ? match.awayTeam : match.homeTeam
+  const homeScore = match.score?.fullTime?.home
+  const awayScore = match.score?.fullTime?.away
+
+  return {
+    opponent: opponentTeam?.name ?? null,
+    opponentTla: normalizeTla(opponentTeam?.tla ?? '').toUpperCase() || null,
+    score: homeScore != null && awayScore != null ? `${homeScore}-${awayScore}` : null,
+    date: match.utcDate ?? null,
+    competition: match.competition?.name ?? null,
+    isHome,
+  }
+}
+
+// Same last-5 window as computeLast5 below, but keeping full match details
+// instead of collapsing each match down to a W/D/L letter.
+function computeLast5Results(matches, tla) {
+  const normalized = normalizeTla(tla).toUpperCase()
+
+  const recentFirst = matches
+    .filter((match) => {
+      const homeTla = normalizeTla(match.homeTeam?.tla ?? '').toUpperCase()
+      const awayTla = normalizeTla(match.awayTeam?.tla ?? '').toUpperCase()
+      return homeTla === normalized || awayTla === normalized
+    })
+    .sort((a, b) => new Date(b.utcDate).getTime() - new Date(a.utcDate).getTime())
+    .slice(0, LAST_N)
+
+  const chronological = recentFirst.map((match) => matchDetailFor(match, normalized)).reverse()
+  const padCount = LAST_N - chronological.length
+
+  return [...Array(padCount).fill(null), ...chronological]
+}
+
 // Returns the club's last N results in chronological order (oldest to
 // newest, left to right), padded on the left with null ("not yet played")
 // if fewer than N matches are available anywhere in the payload.
@@ -124,8 +160,11 @@ export default async function handler(req, res) {
     )
 
     const form = Object.fromEntries([...currentSeasonTlas].map((tla) => [tla, computeLast5(matches, tla)]))
+    const results = Object.fromEntries(
+      [...currentSeasonTlas].map((tla) => [tla, computeLast5Results(matches, tla)]),
+    )
 
-    res.status(200).json({ form })
+    res.status(200).json({ form, results })
   } catch (error) {
     console.error('club-form: unhandled error', error)
     res.status(500).json({ error: 'Internal server error' })
