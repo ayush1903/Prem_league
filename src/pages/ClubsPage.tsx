@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { fadeUp, staggerContainer } from '../lib/motion'
 import { getBadgeColor } from '../lib/clubColors'
 import ClubCrest from '../components/ClubCrest'
@@ -56,11 +56,31 @@ function rankedExtremes<T>(items: T[], key: (item: T) => number, n = 3) {
   return { top, bottom, omitted }
 }
 
+// Tracks whether the viewport is at/above a breakpoint, so JS-driven state
+// (the mobile analytics collapse) can defer to it without fighting Tailwind's
+// own `xl:` media query at render time.
+function useIsAboveBreakpoint(minWidthPx: number) {
+  const query = `(min-width: ${minWidthPx}px)`
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
+
+  useEffect(() => {
+    const mql = window.matchMedia(query)
+    const handleChange = (event: MediaQueryListEvent) => setMatches(event.matches)
+    mql.addEventListener('change', handleChange)
+    return () => mql.removeEventListener('change', handleChange)
+  }, [query])
+
+  return matches
+}
+
 function ClubsPage() {
   const [clubs, setClubs] = useState<Club[]>([])
   const [analytics, setAnalytics] = useState<ClubsAnalytics | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [analyticsError, setAnalyticsError] = useState<string | null>(null)
+  const [analyticsExpanded, setAnalyticsExpanded] = useState(false)
+  const isXlUp = useIsAboveBreakpoint(1280)
+  const showFullAnalytics = isXlUp || analyticsExpanded
 
   useEffect(() => {
     fetch('/api/clubs')
@@ -78,6 +98,56 @@ function ClubsPage() {
   const attackDefense = analytics?.attackVsDefense
 
   const spendRanks = spend ? rankedExtremes(spend.points, (p) => p.residual) : null
+
+  const spendInsight = spend && (
+    <>
+      <strong>Insight (computed live):</strong>{' '}
+      {spend.correlation === null ? (
+        'Not enough clubs have reported spend yet to compute a reliable correlation.'
+      ) : (
+        <>
+          Net spend and points correlate at <strong>r&nbsp;=&nbsp;{spend.correlation.toFixed(2)}</strong> (n=
+          {spend.sampleSize} clubs with reported spend).
+          {spend.overperformer && (
+            <>
+              {' '}
+              Biggest overperformer: <strong>{spend.overperformer.name}</strong> (+
+              {spend.overperformer.residual.toFixed(1)} pts vs. expected).
+            </>
+          )}
+          {spend.underperformer && (
+            <>
+              {' '}
+              Biggest underperformer: <strong>{spend.underperformer.name}</strong> (
+              {spend.underperformer.residual.toFixed(1)} pts vs. expected).
+            </>
+          )}
+        </>
+      )}
+    </>
+  )
+
+  const attackDefenseInsight = attackDefense && (
+    <>
+      <strong>Insight (computed live):</strong> League average this season:{' '}
+      <strong>{attackDefense.avgGoalsFor.toFixed(1)} scored</strong>,{' '}
+      <strong>{attackDefense.avgGoalsAgainst.toFixed(1)} conceded</strong> per club.
+      {attackDefense.bestBalanced && (
+        <>
+          {' '}
+          <strong>{attackDefense.bestBalanced.name}</strong> sit furthest into the strong-attack/strong-defense
+          quadrant (+{attackDefense.bestBalanced.balanceScore.toFixed(0)} vs. league).
+        </>
+      )}
+      {attackDefense.worstBalanced && (
+        <>
+          {' '}
+          <strong>{attackDefense.worstBalanced.name}</strong> sit furthest into the weak-attack/weak-defense
+          quadrant ({attackDefense.worstBalanced.balanceScore.toFixed(0)}).
+        </>
+      )}
+    </>
+  )
 
   return (
     <div className="min-h-screen bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
@@ -136,213 +206,202 @@ function ClubsPage() {
               <p className="text-gray-600 dark:text-gray-400">Loading analytics...</p>
             )}
 
-            <div className="flex flex-col gap-5">
-              {spend && (
-                <div className="rounded-lg border-l-[3px] border-[#00FF85] bg-gray-100 p-5 dark:bg-gray-900">
-                  <p className="text-[15px] font-semibold">Spend vs. performance</p>
-                  <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">Net spend (£m) vs. points this season</p>
-                  <p className="mb-3 rounded-md bg-white p-2.5 text-xs leading-relaxed text-gray-600 dark:bg-gray-950 dark:text-gray-400">
-                    <span className="font-semibold text-gray-700 dark:text-gray-300">How to read this:</span> each dot is a
-                    club, plotted by net transfer spend (x) against league points (y). The dashed line is the league's
-                    best-fit trend — dots above it are outperforming their spend; dots below are underperforming it.
-                  </p>
+            {analytics && !showFullAnalytics && (
+              <div className="flex flex-col gap-3 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
+                <p>{spendInsight}</p>
+                <p>{attackDefenseInsight}</p>
+              </div>
+            )}
 
-                  <SpendPerformanceChart points={spend.points} slope={spend.slope} intercept={spend.intercept} />
+            {analytics && !isXlUp && (
+              <button
+                type="button"
+                onClick={() => setAnalyticsExpanded((expanded) => !expanded)}
+                aria-expanded={analyticsExpanded}
+                className="mt-4 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              >
+                {analyticsExpanded ? 'Hide analytics' : 'View full analytics'}
+              </button>
+            )}
 
-                  {spendRanks && spendRanks.top.length > 0 && (
-                    <table className="mt-3 w-full border-collapse text-xs">
-                      <thead>
-                        <tr className="border-b border-gray-200 text-left text-gray-500 dark:border-gray-700">
-                          <th className="py-1 pr-1 font-medium">Club</th>
-                          <th className="py-1 px-1 text-right font-medium">Net spend</th>
-                          <th className="py-1 px-1 text-right font-medium">Pts</th>
-                          <th className="py-1 pl-1 text-right font-medium">vs. expected</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {spendRanks.top.map((p) => (
-                          <tr key={p.shortName} className="border-b border-gray-50 dark:border-gray-900">
-                            <td className="py-1 pr-1">
-                              <span
-                                aria-hidden="true"
-                                className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
-                                style={{ backgroundColor: getBadgeColor(p.shortName) }}
-                              />
-                              {p.name}
-                            </td>
-                            <td className="py-1 px-1 text-right">£{p.netSpendM.toFixed(0)}m</td>
-                            <td className="py-1 px-1 text-right">{p.points}</td>
-                            <td className="py-1 pl-1 text-right font-semibold text-green-600 dark:text-green-400">
-                              {p.residual >= 0 ? '+' : ''}
-                              {p.residual.toFixed(1)}
-                            </td>
-                          </tr>
-                        ))}
-                        {spendRanks.omitted > 0 && (
-                          <tr>
-                            <td colSpan={4} className="py-1 text-center text-gray-400">
-                              ⋯ {spendRanks.omitted} clubs omitted ⋯
-                            </td>
-                          </tr>
-                        )}
-                        {spendRanks.bottom.map((p) => (
-                          <tr key={p.shortName} className="border-b border-gray-50 dark:border-gray-900">
-                            <td className="py-1 pr-1">
-                              <span
-                                aria-hidden="true"
-                                className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
-                                style={{ backgroundColor: getBadgeColor(p.shortName) }}
-                              />
-                              {p.name}
-                            </td>
-                            <td className="py-1 px-1 text-right">£{p.netSpendM.toFixed(0)}m</td>
-                            <td className="py-1 px-1 text-right">{p.points}</td>
-                            <td className="py-1 pl-1 text-right font-semibold text-red-600 dark:text-red-400">
-                              {p.residual.toFixed(1)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+            <AnimatePresence initial={false}>
+              {showFullAnalytics && (
+                <motion.div
+                  key="full-analytics"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeOut' }}
+                  className={`overflow-hidden ${isXlUp ? '' : 'pt-5'}`}
+                >
+                  <div className="flex flex-col gap-5">
+                    {spend && (
+                      <div className="rounded-lg border-l-[3px] border-[#00FF85] bg-gray-100 p-5 dark:bg-gray-900">
+                        <p className="text-[15px] font-semibold">Spend vs. performance</p>
+                        <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">Net spend (£m) vs. points this season</p>
+                        <p className="mb-3 rounded-md bg-white p-2.5 text-xs leading-relaxed text-gray-600 dark:bg-gray-950 dark:text-gray-400">
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">How to read this:</span> each dot is a
+                          club, plotted by net transfer spend (x) against league points (y). The dashed line is the league's
+                          best-fit trend — dots above it are outperforming their spend; dots below are underperforming it.
+                        </p>
 
-                  <p className="mt-3 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-                    <strong>Insight (computed live):</strong>{' '}
-                    {spend.correlation === null ? (
-                      'Not enough clubs have reported spend yet to compute a reliable correlation.'
-                    ) : (
-                      <>
-                        Net spend and points correlate at <strong>r&nbsp;=&nbsp;{spend.correlation.toFixed(2)}</strong> (n=
-                        {spend.sampleSize} clubs with reported spend).
-                        {spend.overperformer && (
-                          <>
-                            {' '}
-                            Biggest overperformer: <strong>{spend.overperformer.name}</strong> (+
-                            {spend.overperformer.residual.toFixed(1)} pts vs. expected).
-                          </>
+                        <SpendPerformanceChart points={spend.points} slope={spend.slope} intercept={spend.intercept} />
+
+                        {spendRanks && spendRanks.top.length > 0 && (
+                          <table className="mt-3 w-full border-collapse text-xs">
+                            <thead>
+                              <tr className="border-b border-gray-200 text-left text-gray-500 dark:border-gray-700">
+                                <th className="py-1 pr-1 font-medium">Club</th>
+                                <th className="py-1 px-1 text-right font-medium">Net spend</th>
+                                <th className="py-1 px-1 text-right font-medium">Pts</th>
+                                <th className="py-1 pl-1 text-right font-medium">vs. expected</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {spendRanks.top.map((p) => (
+                                <tr key={p.shortName} className="border-b border-gray-50 dark:border-gray-900">
+                                  <td className="py-1 pr-1">
+                                    <span
+                                      aria-hidden="true"
+                                      className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
+                                      style={{ backgroundColor: getBadgeColor(p.shortName) }}
+                                    />
+                                    {p.name}
+                                  </td>
+                                  <td className="py-1 px-1 text-right">£{p.netSpendM.toFixed(0)}m</td>
+                                  <td className="py-1 px-1 text-right">{p.points}</td>
+                                  <td className="py-1 pl-1 text-right font-semibold text-green-600 dark:text-green-400">
+                                    {p.residual >= 0 ? '+' : ''}
+                                    {p.residual.toFixed(1)}
+                                  </td>
+                                </tr>
+                              ))}
+                              {spendRanks.omitted > 0 && (
+                                <tr>
+                                  <td colSpan={4} className="py-1 text-center text-gray-400">
+                                    ⋯ {spendRanks.omitted} clubs omitted ⋯
+                                  </td>
+                                </tr>
+                              )}
+                              {spendRanks.bottom.map((p) => (
+                                <tr key={p.shortName} className="border-b border-gray-50 dark:border-gray-900">
+                                  <td className="py-1 pr-1">
+                                    <span
+                                      aria-hidden="true"
+                                      className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
+                                      style={{ backgroundColor: getBadgeColor(p.shortName) }}
+                                    />
+                                    {p.name}
+                                  </td>
+                                  <td className="py-1 px-1 text-right">£{p.netSpendM.toFixed(0)}m</td>
+                                  <td className="py-1 px-1 text-right">{p.points}</td>
+                                  <td className="py-1 pl-1 text-right font-semibold text-red-600 dark:text-red-400">
+                                    {p.residual.toFixed(1)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         )}
-                        {spend.underperformer && (
-                          <>
-                            {' '}
-                            Biggest underperformer: <strong>{spend.underperformer.name}</strong> (
-                            {spend.underperformer.residual.toFixed(1)} pts vs. expected).
-                          </>
+
+                        <p className="mt-3 text-xs leading-relaxed text-gray-600 dark:text-gray-400">{spendInsight}</p>
+                        {spend.excludedClubs.length > 0 && (
+                          <p className="mt-1 text-[11px] italic text-gray-400">
+                            {spend.excludedClubs.length} club{spend.excludedClubs.length === 1 ? '' : 's'} without usable spend
+                            data excluded: {spend.excludedClubs.join(', ')}.
+                          </p>
                         )}
-                      </>
+                      </div>
                     )}
-                  </p>
-                  {spend.excludedClubs.length > 0 && (
-                    <p className="mt-1 text-[11px] italic text-gray-400">
-                      {spend.excludedClubs.length} club{spend.excludedClubs.length === 1 ? '' : 's'} without usable spend
-                      data excluded: {spend.excludedClubs.join(', ')}.
-                    </p>
-                  )}
-                </div>
+
+                    {attackDefense && (
+                      <div className="rounded-lg border-l-[3px] border-[#00FF85] bg-gray-100 p-5 dark:bg-gray-900">
+                        <p className="text-[15px] font-semibold">Attack vs. defense</p>
+                        <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                          Goals scored vs. goals conceded, split into quadrants
+                        </p>
+                        <p className="mb-3 rounded-md bg-white p-2.5 text-xs leading-relaxed text-gray-600 dark:bg-gray-950 dark:text-gray-400">
+                          <span className="font-semibold text-gray-700 dark:text-gray-300">How to read this:</span> each dot is
+                          a club, plotted by goals scored (x) against goals conceded (y, inverted so fewer conceded sits
+                          higher). The dashed lines mark the league-average scored/conceded and split the chart into four
+                          quadrants: strong both ends (top right), leaky but prolific (bottom right), tight but blunt (top
+                          left), struggling both ends (bottom left).
+                        </p>
+
+                        <AttackDefenseChart
+                          points={attackDefense.points}
+                          avgGoalsFor={attackDefense.avgGoalsFor}
+                          avgGoalsAgainst={attackDefense.avgGoalsAgainst}
+                        />
+
+                        {(() => {
+                          const ranks = rankedExtremes(attackDefense.points, (p) => p.balanceScore)
+                          if (ranks.top.length === 0) return null
+
+                          return (
+                            <table className="mt-3 w-full border-collapse text-xs">
+                              <thead>
+                                <tr className="border-b border-gray-200 text-left text-gray-500 dark:border-gray-700">
+                                  <th className="py-1 pr-1 font-medium">Club</th>
+                                  <th className="py-1 px-1 text-right font-medium">GF</th>
+                                  <th className="py-1 px-1 text-right font-medium">GA</th>
+                                  <th className="py-1 pl-1 text-right font-medium">Balance</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {ranks.top.map((p) => (
+                                  <tr key={p.shortName} className="border-b border-gray-50 dark:border-gray-900">
+                                    <td className="py-1 pr-1">
+                                      <span
+                                        aria-hidden="true"
+                                        className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
+                                        style={{ backgroundColor: getBadgeColor(p.shortName) }}
+                                      />
+                                      {p.name}
+                                    </td>
+                                    <td className="py-1 px-1 text-right">{p.goalsFor}</td>
+                                    <td className="py-1 px-1 text-right">{p.goalsAgainst}</td>
+                                    <td className="py-1 pl-1 text-right font-semibold text-green-600 dark:text-green-400">
+                                      +{p.balanceScore.toFixed(0)}
+                                    </td>
+                                  </tr>
+                                ))}
+                                {ranks.omitted > 0 && (
+                                  <tr>
+                                    <td colSpan={4} className="py-1 text-center text-gray-400">
+                                      ⋯ {ranks.omitted} clubs omitted ⋯
+                                    </td>
+                                  </tr>
+                                )}
+                                {ranks.bottom.map((p) => (
+                                  <tr key={p.shortName} className="border-b border-gray-50 dark:border-gray-900">
+                                    <td className="py-1 pr-1">
+                                      <span
+                                        aria-hidden="true"
+                                        className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
+                                        style={{ backgroundColor: getBadgeColor(p.shortName) }}
+                                      />
+                                      {p.name}
+                                    </td>
+                                    <td className="py-1 px-1 text-right">{p.goalsFor}</td>
+                                    <td className="py-1 px-1 text-right">{p.goalsAgainst}</td>
+                                    <td className="py-1 pl-1 text-right font-semibold text-red-600 dark:text-red-400">
+                                      {p.balanceScore.toFixed(0)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )
+                        })()}
+
+                        <p className="mt-3 text-xs leading-relaxed text-gray-600 dark:text-gray-400">{attackDefenseInsight}</p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
               )}
-
-              {attackDefense && (
-                <div className="rounded-lg border-l-[3px] border-[#00FF85] bg-gray-100 p-5 dark:bg-gray-900">
-                  <p className="text-[15px] font-semibold">Attack vs. defense</p>
-                  <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                    Goals scored vs. goals conceded, split into quadrants
-                  </p>
-                  <p className="mb-3 rounded-md bg-white p-2.5 text-xs leading-relaxed text-gray-600 dark:bg-gray-950 dark:text-gray-400">
-                    <span className="font-semibold text-gray-700 dark:text-gray-300">How to read this:</span> each dot is
-                    a club, plotted by goals scored (x) against goals conceded (y, inverted so fewer conceded sits
-                    higher). The dashed lines mark the league-average scored/conceded and split the chart into four
-                    quadrants: strong both ends (top right), leaky but prolific (bottom right), tight but blunt (top
-                    left), struggling both ends (bottom left).
-                  </p>
-
-                  <AttackDefenseChart
-                    points={attackDefense.points}
-                    avgGoalsFor={attackDefense.avgGoalsFor}
-                    avgGoalsAgainst={attackDefense.avgGoalsAgainst}
-                  />
-
-                  {(() => {
-                    const ranks = rankedExtremes(attackDefense.points, (p) => p.balanceScore)
-                    if (ranks.top.length === 0) return null
-
-                    return (
-                      <table className="mt-3 w-full border-collapse text-xs">
-                        <thead>
-                          <tr className="border-b border-gray-200 text-left text-gray-500 dark:border-gray-700">
-                            <th className="py-1 pr-1 font-medium">Club</th>
-                            <th className="py-1 px-1 text-right font-medium">GF</th>
-                            <th className="py-1 px-1 text-right font-medium">GA</th>
-                            <th className="py-1 pl-1 text-right font-medium">Balance</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {ranks.top.map((p) => (
-                            <tr key={p.shortName} className="border-b border-gray-50 dark:border-gray-900">
-                              <td className="py-1 pr-1">
-                                <span
-                                  aria-hidden="true"
-                                  className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
-                                  style={{ backgroundColor: getBadgeColor(p.shortName) }}
-                                />
-                                {p.name}
-                              </td>
-                              <td className="py-1 px-1 text-right">{p.goalsFor}</td>
-                              <td className="py-1 px-1 text-right">{p.goalsAgainst}</td>
-                              <td className="py-1 pl-1 text-right font-semibold text-green-600 dark:text-green-400">
-                                +{p.balanceScore.toFixed(0)}
-                              </td>
-                            </tr>
-                          ))}
-                          {ranks.omitted > 0 && (
-                            <tr>
-                              <td colSpan={4} className="py-1 text-center text-gray-400">
-                                ⋯ {ranks.omitted} clubs omitted ⋯
-                              </td>
-                            </tr>
-                          )}
-                          {ranks.bottom.map((p) => (
-                            <tr key={p.shortName} className="border-b border-gray-50 dark:border-gray-900">
-                              <td className="py-1 pr-1">
-                                <span
-                                  aria-hidden="true"
-                                  className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full"
-                                  style={{ backgroundColor: getBadgeColor(p.shortName) }}
-                                />
-                                {p.name}
-                              </td>
-                              <td className="py-1 px-1 text-right">{p.goalsFor}</td>
-                              <td className="py-1 px-1 text-right">{p.goalsAgainst}</td>
-                              <td className="py-1 pl-1 text-right font-semibold text-red-600 dark:text-red-400">
-                                {p.balanceScore.toFixed(0)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )
-                  })()}
-
-                  <p className="mt-3 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
-                    <strong>Insight (computed live):</strong> League average this season:{' '}
-                    <strong>{attackDefense.avgGoalsFor.toFixed(1)} scored</strong>,{' '}
-                    <strong>{attackDefense.avgGoalsAgainst.toFixed(1)} conceded</strong> per club.
-                    {attackDefense.bestBalanced && (
-                      <>
-                        {' '}
-                        <strong>{attackDefense.bestBalanced.name}</strong> sit furthest into the strong-attack/strong-defense
-                        quadrant (+{attackDefense.bestBalanced.balanceScore.toFixed(0)} vs. league).
-                      </>
-                    )}
-                    {attackDefense.worstBalanced && (
-                      <>
-                        {' '}
-                        <strong>{attackDefense.worstBalanced.name}</strong> sit furthest into the weak-attack/weak-defense
-                        quadrant ({attackDefense.worstBalanced.balanceScore.toFixed(0)}).
-                      </>
-                    )}
-                  </p>
-                </div>
-              )}
-            </div>
+            </AnimatePresence>
           </div>
         </div>
       </div>
