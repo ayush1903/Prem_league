@@ -495,7 +495,7 @@ function ClubPage() {
                           .findIndex((p) => p.shortName === own.shortName) + 1
 
                       return (
-                        <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900" style={{ borderLeft: `3px solid ${clubColor}` }}>
+                        <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
                           <p className="mb-2 text-sm font-semibold">Spend vs. performance</p>
                           <SpendPerformanceChart
                             points={analytics.spendVsPerformance.points}
@@ -533,7 +533,7 @@ function ClubPage() {
                           .findIndex((p) => p.shortName === own.shortName) + 1
 
                       return (
-                        <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900" style={{ borderLeft: `3px solid ${clubColor}` }}>
+                        <div className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900">
                           <p className="mb-2 text-sm font-semibold">Attack vs. defense</p>
                           <AttackDefenseChart
                             points={analytics.attackVsDefense.points}
@@ -577,7 +577,7 @@ function ClubPage() {
                     initial="hidden"
                     animate="visible"
                     variants={staggerContainer(0.05, 0.1)}
-                    className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                    className="divide-y divide-gray-200 dark:divide-gray-800"
                   >
                     {recentResults.map(({ detail, outcome }, index) => {
                       const opponentCrest = detail.opponentTla ? clubsByShortName[detail.opponentTla]?.crest ?? null : null
@@ -586,29 +586,29 @@ function ClubPage() {
                         <motion.div
                           key={`${detail.opponentTla ?? detail.opponent ?? 'unknown'}-${detail.date ?? index}`}
                           variants={fadeUp}
-                          {...clubCardHover(clubColor)}
-                          className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                          style={{ borderLeft: `3px solid ${clubColor}` }}
+                          className="flex items-center justify-between gap-3 py-5"
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <ClubCrest
-                                label={detail.opponentTla ?? '??'}
-                                crestUrl={opponentCrest}
-                                alt={detail.opponent ?? undefined}
-                                size="xs"
-                              />
-                              <p className="truncate text-sm font-medium">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <ClubCrest
+                              label={detail.opponentTla ?? '??'}
+                              crestUrl={opponentCrest}
+                              alt={detail.opponent ?? undefined}
+                              size="xs"
+                            />
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">
                                 {detail.isHome ? 'vs' : '@'} {detail.opponent ?? 'Unknown opponent'}
                               </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400">
+                                {detail.competition ?? 'Premier League'} · {detail.isHome ? 'Home' : 'Away'}
+                                {detail.date ? ` · ${formatMatchDate(detail.date)}` : ''}
+                              </p>
                             </div>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <p className="font-display text-lg font-extrabold">{detail.score ?? '—'}</p>
                             <FormIcon result={outcome} size="md" />
                           </div>
-                          <p className="mt-2 font-display text-xl font-extrabold">{detail.score ?? '—'}</p>
-                          <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                            {detail.competition ?? 'Premier League'} · {detail.isHome ? 'Home' : 'Away'}
-                          </p>
-                          {detail.date && <p className="mt-1 text-xs text-gray-500">{formatMatchDate(detail.date)}</p>}
                         </motion.div>
                       )
                     })}
@@ -622,15 +622,18 @@ function ClubPage() {
                   <p className="text-sm text-gray-600 dark:text-gray-400">No upcoming fixtures scheduled.</p>
                 ) : (
                   <>
-                    <motion.div initial="hidden" animate="visible" variants={staggerContainer(0.05, 0.05)} className="space-y-3">
+                    <motion.div
+                      initial="hidden"
+                      animate="visible"
+                      variants={staggerContainer(0.05, 0.05)}
+                      className="divide-y divide-gray-200 dark:divide-gray-800"
+                    >
                       {(showAllFixtures ? upcomingMatches : upcomingMatches.slice(0, FIXTURES_PREVIEW_COUNT)).map((match) => (
                         <MotionLink
                           key={match.id}
                           to={`/match/${match.id}`}
                           variants={fadeUp}
-                          {...clubCardHover(clubColor)}
-                          className="flex items-center justify-between rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                          style={{ borderLeft: `3px solid ${clubColor}` }}
+                          className="flex items-center justify-between gap-3 py-5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/60"
                         >
                           <div className="flex min-w-0 items-center gap-3">
                             <ClubCrest label={match.opponentShortName} crestUrl={match.opponentCrest} alt={match.opponentName} size="xs" />
@@ -689,9 +692,7 @@ function ClubPage() {
                             key={`${player.first_name}-${player.second_name}-${index}`}
                             to={`/club/${slug}/player/${player.id}`}
                             variants={fadeUp}
-                            {...clubCardHover(clubColor)}
-                            className="block rounded-lg bg-gray-100 p-3 dark:bg-gray-900"
-                            style={{ borderLeft: `3px solid ${clubColor}` }}
+                            className="block rounded-lg p-3 transition-colors hover:bg-gray-100 dark:hover:bg-gray-900"
                           >
                             <p className="font-medium">
                               {player.first_name} {player.second_name}
@@ -720,7 +721,6 @@ function ClubPage() {
                   variants={fadeUp}
                   {...clubCardHover(clubColor)}
                   className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                  style={{ borderLeft: `3px solid ${clubColor}` }}
                 >
                   <p className="text-sm text-gray-600 dark:text-gray-400">Manager</p>
                   <p className="font-display text-lg font-extrabold">{clubContent?.manager ?? '—'}</p>
@@ -729,7 +729,6 @@ function ClubPage() {
                   variants={fadeUp}
                   {...clubCardHover(clubColor)}
                   className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                  style={{ borderLeft: `3px solid ${clubColor}` }}
                 >
                   <p className="text-sm text-gray-600 dark:text-gray-400">Formation</p>
                   <p className="font-display text-lg font-extrabold">{clubContent?.formation ?? '—'}</p>
@@ -738,7 +737,6 @@ function ClubPage() {
                   variants={fadeUp}
                   {...clubCardHover(clubColor)}
                   className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                  style={{ borderLeft: `3px solid ${clubColor}` }}
                 >
                   <p className="text-sm text-gray-600 dark:text-gray-400">Net spend</p>
                   <p className="font-display text-lg font-extrabold">{clubContent?.net_spend ?? '—'}</p>
@@ -747,7 +745,6 @@ function ClubPage() {
                   variants={fadeUp}
                   {...clubCardHover(clubColor)}
                   className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                  style={{ borderLeft: `3px solid ${clubColor}` }}
                 >
                   <p className="text-sm text-gray-600 dark:text-gray-400">Gross spend</p>
                   <p className="font-display text-lg font-extrabold">{clubContent?.gross_spend ?? '—'}</p>
@@ -761,16 +758,10 @@ function ClubPage() {
                     initial="hidden"
                     animate="visible"
                     variants={staggerContainer(0.06, 0.1)}
-                    className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+                    className="divide-y divide-gray-200 dark:divide-gray-800"
                   >
                     {transfers.map((transfer, index) => (
-                      <motion.div
-                        key={`${transfer.player_name}-${index}`}
-                        variants={fadeUp}
-                        {...clubCardHover(clubColor)}
-                        className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                        style={{ borderLeft: `3px solid ${clubColor}` }}
-                      >
+                      <motion.div key={`${transfer.player_name}-${index}`} variants={fadeUp} className="py-5">
                         <p className="font-medium">{transfer.player_name}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">
                           {transfer.type === 'in' ? 'In' : transfer.type === 'out' ? 'Out' : 'Rumour'}
