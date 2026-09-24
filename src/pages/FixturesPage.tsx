@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { fadeUp, staggerContainer, cardHover } from '../lib/motion'
+import { fadeUp, staggerContainer } from '../lib/motion'
 import { normalizeTla } from '../lib/tla'
-import { getBadgeColor } from '../lib/clubColors'
 import ClubCrest from '../components/ClubCrest'
 import CompetitionLogo from '../components/CompetitionLogo'
 import SiteHeader from '../components/SiteHeader'
@@ -150,22 +149,18 @@ function FixturesPage() {
           initial="hidden"
           animate="visible"
           variants={staggerContainer(0.04, 0.1)}
-          className="flex flex-col gap-3"
+          className="divide-y divide-gray-200 dark:divide-gray-800"
         >
           {matches.map((match) => {
             const homeClub = resolveClub(match.homeTeam.tla, clubsByShortName)
             const awayClub = resolveClub(match.awayTeam.tla, clubsByShortName)
-            const homeColor = getBadgeColor(homeClub?.short_name ?? match.homeTeam.tla)
-            const awayColor = getBadgeColor(awayClub?.short_name ?? match.awayTeam.tla)
 
             return (
               <MotionLink
                 key={match.id}
                 to={`/match/${match.id}`}
                 variants={fadeUp}
-                {...cardHover}
-                className="block rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                style={{ borderTop: '3px solid transparent', borderImage: `linear-gradient(90deg, ${homeColor}, ${awayColor}) 1` }}
+                className="block py-5 transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/60"
               >
                 <p className="mb-3 text-xs text-gray-500">{formatMatchDate(match.utcDate)}</p>
                 <div className="flex items-center justify-between gap-3">

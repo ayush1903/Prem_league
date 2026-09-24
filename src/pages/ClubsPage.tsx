@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { fadeUp, staggerContainer } from '../lib/motion'
@@ -182,8 +182,7 @@ function ClubsPage() {
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
                   transition={{ duration: 0.15 }}
-                  className="club-card flex flex-col items-center gap-3 rounded-lg bg-gray-100 p-4 text-center dark:bg-gray-900"
-                  style={{ '--club': getBadgeColor(club.short_name) } as CSSProperties}
+                  className="flex flex-col items-center gap-3 rounded-lg p-4 text-center transition-colors hover:bg-gray-100 dark:hover:bg-gray-900"
                 >
                   <ClubCrest label={club.short_name} crestUrl={club.crest} alt={club.name} size="xl" />
                   <p className="text-sm font-medium">{club.name}</p>
@@ -236,7 +235,7 @@ function ClubsPage() {
                 >
                   <div className="flex flex-col gap-5">
                     {spend && (
-                      <div className="rounded-lg border-l-[3px] border-[#00FF85] bg-gray-100 p-5 dark:bg-gray-900">
+                      <div className="rounded-lg bg-gray-100 p-5 dark:bg-gray-900">
                         <p className="text-[15px] font-semibold">Spend vs. performance</p>
                         <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">Net spend (£m) vs. points this season</p>
                         <p className="mb-3 rounded-md bg-white p-2.5 text-xs leading-relaxed text-gray-600 dark:bg-gray-950 dark:text-gray-400">
@@ -315,7 +314,7 @@ function ClubsPage() {
                     )}
 
                     {attackDefense && (
-                      <div className="rounded-lg border-l-[3px] border-[#00FF85] bg-gray-100 p-5 dark:bg-gray-900">
+                      <div className="rounded-lg bg-gray-100 p-5 dark:bg-gray-900">
                         <p className="text-[15px] font-semibold">Attack vs. defense</p>
                         <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
                           Goals scored vs. goals conceded, split into quadrants

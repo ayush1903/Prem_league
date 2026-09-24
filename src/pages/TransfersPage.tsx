@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { fadeUp, staggerContainer, clubCardHover } from '../lib/motion'
+import { fadeUp, staggerContainer } from '../lib/motion'
 import { getClubInitials, getBadgeColor } from '../lib/clubColors'
 import ClubCrest from '../components/ClubCrest'
 import SiteHeader from '../components/SiteHeader'
@@ -116,7 +116,7 @@ function TransfersPage() {
         {marketError && <p className="mb-6 text-red-500">{marketError}</p>}
 
         {market && (
-          <div className="mb-8 rounded-lg border-l-[3px] border-[#00FF85] bg-gray-100 p-5 dark:bg-gray-900">
+          <div className="mb-8 rounded-lg bg-gray-100 p-5 dark:bg-gray-900">
             <p className="mb-2 text-[15px] font-semibold">Transfer market this window</p>
             <p className="mb-4 rounded-md bg-white p-2.5 text-xs leading-relaxed text-gray-600 dark:bg-gray-950 dark:text-gray-400">
               <span className="font-semibold text-gray-700 dark:text-gray-300">What this shows:</span> total transfer
@@ -281,21 +281,18 @@ function TransfersPage() {
           initial="hidden"
           animate="visible"
           variants={staggerContainer(0.05, 0.15)}
-          className="flex flex-col gap-3"
+          className="divide-y divide-gray-200 dark:divide-gray-800"
         >
           {transfers.map((transfer, index) => {
             const initials = getClubInitials(transfer.club_name, transfer.short_name)
             const crestUrl = transfer.short_name ? crestByShortName[transfer.short_name.toUpperCase()] ?? null : null
             const type = transfer.type ?? 'rumour'
-            const clubColor = getBadgeColor(transfer.short_name ?? initials)
 
             return (
               <motion.div
                 key={`${transfer.club_name}-${transfer.player_name}-${index}`}
                 variants={fadeUp}
-                {...clubCardHover(clubColor)}
-                className="flex items-center gap-4 rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-                style={{ borderLeft: `4px solid ${clubColor}` }}
+                className="flex items-center gap-4 py-5"
               >
                 <ClubCrest label={initials} crestUrl={crestUrl} alt={transfer.club_name} size="md" />
 
