@@ -108,7 +108,7 @@ export default async function handler(req, res) {
           player_name: `${fplPlayer.first_name} ${fplPlayer.second_name}`,
           club_short_name: team.short_name,
           match_status: result.status,
-          candidates: result.status === 'matched' ? null : result.candidates.map((c) => ({ id: c.id, name: c.name })),
+          candidates: result.status === 'matched' ? [] : result.candidates.map((c) => ({ id: c.id, name: c.name })),
         })
       }
 
