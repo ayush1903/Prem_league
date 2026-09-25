@@ -58,8 +58,16 @@ const AVAILABILITY_LABELS: Record<string, string> = {
 
 // Two-beat reveal: the hero (photo, then name) lands first, and the stats
 // only start once it has settled, rather than everything snapping in at once.
+// Hero steps run back-to-back without overlapping, with a short hold after
+// the photo so it reads on its own before the name arrives (~2s total).
 const HERO_EASE = [0.22, 1, 0.36, 1] as const
-const STATS_DELAY = 0.8
+const HERO_STEPS = {
+  glow: { delay: 0, duration: 0.5 },
+  photo: { delay: 0.5, duration: 0.7 },
+  accentBar: { delay: 1.35, duration: 0.25 },
+  name: { delay: 1.65, duration: 0.4 },
+}
+const STATS_DELAY = 2.1
 
 function PlayerNotFoundPage() {
   return (
@@ -185,7 +193,7 @@ function PlayerPage() {
             aria-hidden="true"
             initial={{ opacity: 0, scale: 0.6 }}
             animate={{ opacity: 0.45, scale: 1 }}
-            transition={{ duration: 0.8, ease: HERO_EASE }}
+            transition={{ ...HERO_STEPS.glow, ease: HERO_EASE }}
             className="absolute left-1/2 top-6 -ml-32 h-64 w-64 rounded-full blur-3xl sm:-ml-40 sm:h-80 sm:w-80"
             style={{ backgroundColor: clubColor }}
           />
@@ -205,7 +213,7 @@ function PlayerPage() {
           <motion.div
             initial={{ opacity: 0, y: 32, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.6, ease: HERO_EASE, delay: 0.1 }}
+            transition={{ ...HERO_STEPS.photo, ease: HERO_EASE }}
             className="relative -mt-2"
           >
             <PlayerHeadshot
@@ -219,7 +227,7 @@ function PlayerPage() {
           <motion.div
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
-            transition={{ duration: 0.4, ease: HERO_EASE, delay: 0.35 }}
+            transition={{ ...HERO_STEPS.accentBar, ease: HERO_EASE }}
             className="relative mx-auto h-[3px] w-16 rounded-full"
             style={{ backgroundColor: clubColor }}
           />
@@ -227,7 +235,7 @@ function PlayerPage() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: 'easeOut', delay: 0.4 }}
+            transition={{ ...HERO_STEPS.name, ease: 'easeOut' }}
             className="relative mt-5 text-center"
           >
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/60">{player.first_name}</p>
