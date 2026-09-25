@@ -3,7 +3,8 @@ import { Link, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { fadeUp, staggerContainer, clubCardHover } from '../lib/motion'
 import { getBadgeColor } from '../lib/clubColors'
-import ClubHero from '../components/ClubHero'
+import ClubCrest from '../components/ClubCrest'
+import PlayerHeadshot from '../components/PlayerHeadshot'
 import SectionHeading from '../components/SectionHeading'
 import SiteHeader from '../components/SiteHeader'
 
@@ -18,6 +19,8 @@ type Player = {
   id: number
   first_name: string
   second_name: string
+  // Absent on squad rows cached before photos were added.
+  photo?: string | null
   element_type: number
   goals_scored: number
   assists: number
@@ -50,7 +53,13 @@ const AVAILABILITY_LABELS: Record<string, string> = {
   s: 'Suspended',
   d: 'Doubtful',
   u: 'Unavailable',
+  n: 'Not available',
 }
+
+// Two-beat reveal: the hero (photo, then name) lands first, and the stats
+// only start once it has settled, rather than everything snapping in at once.
+const HERO_EASE = [0.22, 1, 0.36, 1] as const
+const STATS_DELAY = 0.8
 
 function PlayerNotFoundPage() {
   return (
@@ -137,12 +146,26 @@ function PlayerPage() {
 
   const badgeLabel = (slug ?? '').toUpperCase()
   const clubColor = getBadgeColor(badgeLabel)
+  const fullName = `${player.first_name} ${player.second_name}`
   const price = `£${(player.now_cost / 10).toFixed(1)}m`
+  const hasAvailabilityNote = player.status !== 'a' && Boolean(player.news || AVAILABILITY_LABELS[player.status])
+
+  const headlineStats = [
+    { label: 'Total Points', value: player.total_points },
+    { label: 'Goals', value: player.goals_scored },
+    { label: 'Assists', value: player.assists },
+  ]
+  const secondaryStats = [
+    { label: 'Minutes', value: player.minutes.toLocaleString() },
+    { label: 'Price', value: price },
+    { label: 'Form', value: player.form },
+    { label: 'Ownership', value: `${player.selected_by_percent}%` },
+  ]
 
   return (
     <div className="min-h-screen bg-white font-body text-gray-900 dark:bg-gray-950 dark:text-white">
       <SiteHeader />
-      <div className="mx-auto max-w-2xl px-6 py-10">
+      <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
         <Link
           to={`/club/${slug}`}
           className="mb-6 inline-block text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
@@ -150,106 +173,134 @@ function PlayerPage() {
           ← {team.team}
         </Link>
 
-        <ClubHero
-          color={clubColor}
-          label={badgeLabel}
-          crestUrl={crest}
-          alt={team.team}
-          title={`${player.first_name} ${player.second_name}`}
-          subtitle={`${POSITION_LABELS[player.element_type]} · ${team.team}`}
-        />
-
-        {player.status !== 'a' && player.news && (
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={fadeUp}
-            transition={{ duration: 0.25, ease: 'easeOut', delay: 0.05 }}
-            className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/40"
-          >
-            <p className="text-sm font-semibold text-red-700 dark:text-red-400">
-              {AVAILABILITY_LABELS[player.status] ?? 'Availability'}
-            </p>
-            <p className="mt-1 text-sm text-red-800 dark:text-red-300">{player.news}</p>
-            {player.status === 'd' && player.chance_of_playing_this_round !== null && (
-              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                {player.chance_of_playing_this_round}% chance of playing
-              </p>
-            )}
-          </motion.div>
-        )}
-
-        <div className="mt-8">
-          <SectionHeading color={clubColor}>Season stats</SectionHeading>
-        </div>
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer(0.06, 0.2)}
-          className="grid grid-cols-2 gap-4 sm:grid-cols-3"
+        {/* Beat one: photo-forward hero on the shared dark ground, lit by the club's color. */}
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="relative overflow-hidden rounded-2xl px-6 pb-8 pt-6"
+          style={{ backgroundColor: '#0d0b10' }}
         >
           <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
-          >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Goals</p>
-            <p className="font-display text-2xl font-extrabold">{player.goals_scored}</p>
-          </motion.div>
+            aria-hidden="true"
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: 0.45, scale: 1 }}
+            transition={{ duration: 0.8, ease: HERO_EASE }}
+            className="absolute left-1/2 top-6 -ml-32 h-64 w-64 rounded-full blur-3xl sm:-ml-40 sm:h-80 sm:w-80"
+            style={{ backgroundColor: clubColor }}
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-1/2"
+            style={{ background: `linear-gradient(to top, ${clubColor}26, transparent)` }}
+          />
+
+          <div className="relative flex items-center justify-between">
+            <ClubCrest label={badgeLabel} crestUrl={crest} alt={team.team} size="sm" />
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50">
+              {POSITION_LABELS[player.element_type]}
+            </span>
+          </div>
+
           <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
+            initial={{ opacity: 0, y: 32, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.6, ease: HERO_EASE, delay: 0.1 }}
+            className="relative -mt-2"
           >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Assists</p>
-            <p className="font-display text-2xl font-extrabold">{player.assists}</p>
+            <PlayerHeadshot
+              name={fullName}
+              photoUrl={player.photo}
+              color={clubColor}
+              className="mx-auto h-60 w-60 sm:h-72 sm:w-72"
+            />
           </motion.div>
+
           <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.4, ease: HERO_EASE, delay: 0.35 }}
+            className="relative mx-auto h-[3px] w-16 rounded-full"
+            style={{ backgroundColor: clubColor }}
+          />
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: 'easeOut', delay: 0.4 }}
+            className="relative mt-5 text-center"
           >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Minutes Played</p>
-            <p className="font-display text-2xl font-extrabold">{player.minutes}</p>
+            <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/60">{player.first_name}</p>
+            <h1 className="mt-1 break-words font-display text-5xl font-extrabold leading-none text-white sm:text-6xl">
+              {player.second_name}
+            </h1>
+            <p className="mt-3 text-sm text-white/60">
+              {POSITION_LABELS[player.element_type]} · {team.team}
+            </p>
           </motion.div>
-          <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
-          >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Total Points</p>
-            <p className="font-display text-2xl font-extrabold">{player.total_points}</p>
+        </motion.section>
+
+        {/* Beat two: availability + stats, held back until the hero has settled. */}
+        <motion.div initial="hidden" animate="visible" variants={staggerContainer(0.08, STATS_DELAY)}>
+          {hasAvailabilityNote && (
+            <motion.div
+              variants={fadeUp}
+              className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/40"
+            >
+              <p className="text-sm font-semibold text-red-700 dark:text-red-400">
+                {AVAILABILITY_LABELS[player.status] ?? 'Availability'}
+              </p>
+              {player.news && <p className="mt-1 text-sm text-red-800 dark:text-red-300">{player.news}</p>}
+              {player.status === 'd' && player.chance_of_playing_this_round !== null && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {player.chance_of_playing_this_round}% chance of playing
+                </p>
+              )}
+            </motion.div>
+          )}
+
+          <motion.div variants={fadeUp} className="mt-8">
+            <SectionHeading color={clubColor}>Season stats</SectionHeading>
           </motion.div>
-          <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
-          >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Price</p>
-            <p className="font-display text-2xl font-extrabold">{price}</p>
+
+          <motion.div variants={staggerContainer(0.06)} className="grid grid-cols-3 gap-3 sm:gap-4">
+            {headlineStats.map((stat) => (
+              <motion.div
+                key={stat.label}
+                variants={fadeUp}
+                {...clubCardHover(clubColor)}
+                className="relative overflow-hidden rounded-xl p-4 text-white sm:p-5"
+                style={{ backgroundColor: '#0d0b10' }}
+              >
+                <div
+                  aria-hidden="true"
+                  className="absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-40 blur-2xl"
+                  style={{ backgroundColor: clubColor }}
+                />
+                <p className="relative text-xs text-white/60 sm:text-sm">{stat.label}</p>
+                <p className="relative mt-1 font-display text-4xl font-extrabold leading-none sm:text-5xl">
+                  {stat.value}
+                </p>
+              </motion.div>
+            ))}
           </motion.div>
+
           <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
+            variants={staggerContainer(0.06)}
+            className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:grid-cols-4 sm:gap-4"
           >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Form</p>
-            <p className="font-display text-2xl font-extrabold">{player.form}</p>
-          </motion.div>
-          <motion.div
-            variants={fadeUp}
-            {...clubCardHover(clubColor)}
-            className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
-            style={{ borderLeft: `3px solid ${clubColor}` }}
-          >
-            <p className="text-sm text-gray-600 dark:text-gray-400">Ownership</p>
-            <p className="font-display text-2xl font-extrabold">{player.selected_by_percent}%</p>
+            {secondaryStats.map((stat) => (
+              <motion.div
+                key={stat.label}
+                variants={fadeUp}
+                {...clubCardHover(clubColor)}
+                className="rounded-lg bg-gray-100 p-4 dark:bg-gray-900"
+                style={{ borderLeft: `3px solid ${clubColor}` }}
+              >
+                <p className="text-sm text-gray-600 dark:text-gray-400">{stat.label}</p>
+                <p className="font-display text-2xl font-extrabold">{stat.value}</p>
+              </motion.div>
+            ))}
           </motion.div>
         </motion.div>
       </div>

@@ -3,6 +3,12 @@ import { resolveClub } from './_lib/resolveClub.js'
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY)
 
+// FPL's per-player `code` (not `id`, which changes every season) keys the
+// Premier League's own headshot CDN.
+function playerPhotoUrl(code) {
+  return code ? `https://resources.premierleague.com/premierleague/photos/players/250x250/p${code}.png` : null
+}
+
 export default async function handler(req, res) {
   try {
     const club = (req.query?.club || 'ARS').toString()
@@ -38,10 +44,11 @@ export default async function handler(req, res) {
 
     const players = data.elements
       .filter((element) => element.team === team.id)
-      .map(({ id, first_name, second_name, element_type, goals_scored, assists, minutes, total_points, now_cost, form, selected_by_percent, status, news, chance_of_playing_this_round, chance_of_playing_next_round }) => ({
+      .map(({ id, code, first_name, second_name, element_type, goals_scored, assists, minutes, total_points, now_cost, form, selected_by_percent, status, news, chance_of_playing_this_round, chance_of_playing_next_round }) => ({
         id,
         first_name,
         second_name,
+        photo: playerPhotoUrl(code),
         element_type,
         goals_scored,
         assists,
